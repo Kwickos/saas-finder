@@ -2166,6 +2166,29 @@ export default function Home() {
         </div>
       </main>
 
+      <footer className="relative mt-auto h-[260px] overflow-hidden sm:h-[320px]">
+        <Image
+          src="/footer-bg.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-bottom"
+        />
+        <div className="relative mx-auto flex max-w-6xl items-start justify-between px-5 pt-5 text-xs text-zinc-500 sm:pt-6">
+          <span>SaaS Finder · MIT licensed</span>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://github.com/Kwickos/saas-finder"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-zinc-900"
+            >
+              GitHub
+            </a>
+          </div>
+        </div>
+      </footer>
+
       {promptIdea && result ? (
         <PromptModal
           idea={promptIdea}

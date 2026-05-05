@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useEffect,
   useLayoutEffect,
@@ -1922,14 +1923,19 @@ export default function Home() {
           <>
             {/* Hero */}
             <section className="relative overflow-hidden">
-              {/* Soft accent glow */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -top-32 right-0 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-orange-200/40 to-transparent blur-3xl"
+              {/* Background illustration */}
+              <Image
+                src="/hero-bg.webp"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-center"
               />
+              {/* Soft readability overlay so text stays legible over the image */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute -top-20 left-1/4 h-[320px] w-[320px] rounded-full bg-gradient-to-br from-blue-200/30 to-transparent blur-3xl"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-50/30 via-zinc-50/50 to-zinc-50"
               />
 
               <div className="relative mx-auto max-w-6xl px-5 pt-24 pb-12 sm:pt-32 sm:pb-16">

@@ -1050,12 +1050,57 @@ function NavSubredditPopover({
     onAnalyze();
   }
 
+  // Measure how many chips fit in the collapsed summary view, render
+  // "+N more" for the rest. Only relevant when !open.
+  const summarySlotRef = useRef<HTMLButtonElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const [summaryVisibleCount, setSummaryVisibleCount] = useState(values.length);
+
+  useLayoutEffect(() => {
+    if (open || values.length === 0) return;
+
+    function recompute() {
+      const slot = summarySlotRef.current;
+      const ghost = ghostRef.current;
+      if (!slot || !ghost) return;
+
+      const available = slot.clientWidth;
+      const ghostChips = Array.from(
+        ghost.querySelectorAll<HTMLElement>("[data-ghost-chip]"),
+      );
+      const ghostMore = ghost.querySelector<HTMLElement>("[data-ghost-more]");
+      const moreWidth = ghostMore?.offsetWidth ?? 70;
+      const gap = 6;
+
+      let total = 0;
+      let count = 0;
+      for (let i = 0; i < ghostChips.length; i++) {
+        const chipWidth = ghostChips[i].offsetWidth;
+        const isLast = i === ghostChips.length - 1;
+        const reserveMore = isLast ? 0 : moreWidth + gap;
+        const next = total + chipWidth + (i > 0 ? gap : 0);
+        if (next + reserveMore > available) break;
+        total = next;
+        count = i + 1;
+      }
+      setSummaryVisibleCount(count);
+    }
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    if (summarySlotRef.current) ro.observe(summarySlotRef.current);
+    return () => ro.disconnect();
+  }, [values, open]);
+
+  const summaryVisible = values.slice(0, summaryVisibleCount);
+  const summaryOverflow = Math.max(0, values.length - summaryVisibleCount);
+
   return (
     <div className="relative w-full max-w-[520px]" ref={ref}>
       <div
         className={classNames(
-          "flex w-full items-start gap-2 rounded-3xl bg-zinc-900 py-2 pl-3 pr-2 text-sm text-white transition",
-          "focus-within:ring-2 focus-within:ring-white/15",
+          "flex w-full gap-2 rounded-3xl bg-zinc-900 py-2 pl-3 pr-2 text-sm text-white transition",
+          open ? "items-start" : "items-center",
           open && "ring-2 ring-white/15",
         )}
       >
@@ -1064,7 +1109,10 @@ function NavSubredditPopover({
           height="14"
           viewBox="0 0 16 16"
           fill="none"
-          className="mt-1 shrink-0 text-white/40"
+          className={classNames(
+            "shrink-0 text-white/40",
+            open && "mt-1",
+          )}
           aria-hidden
         >
           <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
@@ -1076,19 +1124,52 @@ function NavSubredditPopover({
           />
         </svg>
 
-        <SubredditChipsField
-          values={values}
-          onChange={onChange}
-          onSubmit={onAnalyze}
-          onFocus={() => setOpen(true)}
-          theme="dark"
-        />
+        {open ? (
+          <SubredditChipsField
+            values={values}
+            onChange={onChange}
+            onSubmit={handleAnalyze}
+            theme="dark"
+            autoFocus
+          />
+        ) : (
+          <button
+            ref={summarySlotRef}
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
+          >
+            {values.length === 0 ? (
+              <span className="truncate text-white/50">
+                Add subreddits to analyze…
+              </span>
+            ) : (
+              <>
+                {summaryVisible.map((sub) => (
+                  <span
+                    key={sub}
+                    className="inline-flex shrink-0 items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[13px] font-medium"
+                  >
+                    <span className="text-white/50">r/</span>
+                    {sub}
+                  </span>
+                ))}
+                {summaryOverflow > 0 ? (
+                  <span className="shrink-0 text-xs text-white/60">
+                    +{summaryOverflow} more
+                  </span>
+                ) : null}
+              </>
+            )}
+          </button>
+        )}
 
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={classNames(
             "flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition",
+            open && "mt-0.5",
             open
               ? "bg-white/15 text-white"
               : "text-white/60 hover:bg-white/10 hover:text-white",
@@ -1108,6 +1189,30 @@ function NavSubredditPopover({
           </svg>
         </button>
       </div>
+
+      {/* Hidden ghost row for measuring chip widths in the collapsed view */}
+      {!open && values.length > 0 ? (
+        <div
+          ref={ghostRef}
+          aria-hidden
+          className="pointer-events-none absolute -z-10 flex items-center gap-1.5 whitespace-nowrap"
+          style={{ top: 0, left: 0, visibility: "hidden" }}
+        >
+          {values.map((sub) => (
+            <span
+              key={`ghost-${sub}`}
+              data-ghost-chip
+              className="inline-flex items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[13px] font-medium text-white"
+            >
+              <span className="text-white/50">r/</span>
+              {sub}
+            </span>
+          ))}
+          <span data-ghost-more className="text-xs text-white/60">
+            +{values.length} more
+          </span>
+        </div>
+      ) : null}
 
       {open ? (
         <div className="shadow-modal absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl bg-zinc-900 p-4 ring-1 ring-white/10">

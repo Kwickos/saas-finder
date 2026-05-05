@@ -541,6 +541,7 @@ function ModelPicker({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -556,6 +557,26 @@ function ModelPicker({
       document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("keydown", onKey);
     };
+  }, [open]);
+
+  // Center the selected model inside the scroll container when opening
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      const container = listRef.current;
+      if (!container) return;
+      const active = container.querySelector<HTMLElement>(
+        '[data-active="true"]',
+      );
+      if (!active) return;
+      const containerHeight = container.clientHeight;
+      const targetTop =
+        active.offsetTop - containerHeight / 2 + active.offsetHeight / 2;
+      container.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "instant" as ScrollBehavior,
+      });
+    });
   }, [open]);
 
   const hasModels =
@@ -601,7 +622,10 @@ function ModelPicker({
 
       {open && models ? (
         <div className="shadow-popover absolute right-0 top-full z-40 mt-1 w-[320px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl bg-white">
-          <div className="scrollbar-thin max-h-[60vh] overflow-y-auto">
+          <div
+            ref={listRef}
+            className="scrollbar-thin max-h-[60vh] overflow-y-auto"
+          >
             {MODEL_TIER_ORDER.map((tier) => {
               const list = models.tiers[tier];
               if (!list || list.length === 0) return null;
@@ -622,6 +646,7 @@ function ModelPicker({
                       <button
                         key={m.id}
                         type="button"
+                        data-active={isActive ? "true" : undefined}
                         onClick={() => {
                           onChange(m.id);
                           setOpen(false);
@@ -860,10 +885,10 @@ function SubredditChipsField({
   );
 }
 
-function SubredditEditor({
+function NavSubredditPopover({
   values,
   onChange,
-  onSubmit,
+  onAnalyze,
   loading,
   settings,
   onSettingsChange,
@@ -872,85 +897,7 @@ function SubredditEditor({
 }: {
   values: string[];
   onChange: (next: string[]) => void;
-  onSubmit: () => void;
-  loading: boolean;
-  settings: AnalysisSettings;
-  onSettingsChange: (next: AnalysisSettings) => void;
-  models: ModelsResponse | null;
-  modelsLoading: boolean;
-}) {
-  const [showSettings, setShowSettings] = useState(false);
-  return (
-    <div className="w-full space-y-3">
-      <div className="flex w-full items-stretch gap-2">
-        <SubredditChipsField
-          values={values}
-          onChange={onChange}
-          onSubmit={onSubmit}
-        />
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={loading || values.length === 0}
-          className="shrink-0 rounded-xl bg-zinc-900 px-5 py-3 text-[15px] font-medium text-white transition active:scale-[0.96] hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 disabled:active:scale-100"
-        >
-          {loading
-            ? "Analyzing…"
-            : values.length > 1
-              ? `Analyze ${values.length} subs`
-              : "Analyze"}
-        </button>
-      </div>
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowSettings((v) => !v)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 transition hover:text-zinc-900"
-        >
-          <span
-            className={classNames(
-              "transition-transform",
-              showSettings && "rotate-90",
-            )}
-          >
-            ›
-          </span>
-          {showSettings ? "Hide settings" : "Settings"}
-          <span className="text-zinc-400">
-            ·{" "}
-            {settings.postsPerSubreddit}p / {settings.commentsPerPost}c ·{" "}
-            {LANGUAGE_OPTIONS.find((l) => l.code === settings.language)?.label ??
-              settings.language}
-          </span>
-        </button>
-        {showSettings ? (
-          <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-4">
-            <SettingsFields
-              settings={settings}
-              onChange={onSettingsChange}
-              models={models}
-              modelsLoading={modelsLoading}
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function CompactSubredditPopover({
-  values,
-  onChange,
-  onSubmit,
-  loading,
-  settings,
-  onSettingsChange,
-  models,
-  modelsLoading,
-}: {
-  values: string[];
-  onChange: (next: string[]) => void;
-  onSubmit: () => void;
+  onAnalyze: () => void;
   loading: boolean;
   settings: AnalysisSettings;
   onSettingsChange: (next: AnalysisSettings) => void;
@@ -984,61 +931,71 @@ function CompactSubredditPopover({
   const visible = values.slice(0, VISIBLE);
   const more = Math.max(0, values.length - VISIBLE);
 
-  function handleSubmit() {
+  function handleAnalyze() {
     setOpen(false);
-    onSubmit();
+    onAnalyze();
   }
 
   return (
-    <div className="relative flex items-center gap-2" ref={ref}>
+    <div className="relative w-full max-w-[520px]" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={classNames(
-          "flex max-w-[460px] items-center gap-1.5 rounded-xl border bg-white px-2 py-1.5 text-sm transition",
-          open
-            ? "border-zinc-900 ring-2 ring-zinc-900/10"
-            : "border-zinc-200 hover:border-zinc-300",
+          "flex w-full items-center gap-2 rounded-full bg-zinc-900 py-2 pl-3 pr-3 text-sm text-white transition",
+          "hover:bg-zinc-800",
+          open && "ring-2 ring-white/15",
         )}
       >
-        {values.length === 0 ? (
-          <span className="px-1 text-zinc-400">Select subreddits</span>
-        ) : (
-          <>
-            {visible.map((sub) => (
-              <span
-                key={sub}
-                className="inline-flex items-center rounded-md bg-zinc-100 px-1.5 py-0.5 text-[13px] font-medium text-zinc-800"
-              >
-                <span className="text-zinc-400">r/</span>
-                {sub}
-              </span>
-            ))}
-            {more > 0 ? (
-              <span className="rounded-md bg-zinc-50 px-1.5 py-0.5 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-200">
-                +{more} more
-              </span>
-            ) : null}
-          </>
-        )}
-        <ChevronIcon open={open} />
-      </button>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          className="shrink-0 text-white/40"
+          aria-hidden
+        >
+          <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M10.5 10.5l3 3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
 
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={loading || values.length === 0}
-        className="shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition active:scale-[0.96] hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 disabled:active:scale-100"
-      >
-        {loading
-          ? "Analyzing…"
-          : values.length > 1
-            ? `Analyze ${values.length} subs`
-            : "Analyze"}
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+          {values.length === 0 ? (
+            <span className="truncate text-white/50">
+              Add subreddits to analyze…
+            </span>
+          ) : (
+            <>
+              {visible.map((sub) => (
+                <span
+                  key={sub}
+                  className="inline-flex shrink-0 items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[13px] font-medium"
+                >
+                  <span className="text-white/50">r/</span>
+                  {sub}
+                </span>
+              ))}
+              {more > 0 ? (
+                <span className="shrink-0 text-xs text-white/60">
+                  +{more} more
+                </span>
+              ) : null}
+            </>
+          )}
+        </span>
+
+        <span className="shrink-0 text-white/60">
+          <ChevronIcon open={open} />
+        </span>
       </button>
 
       {open ? (
-        <div className="shadow-popover absolute right-0 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] rounded-xl bg-white p-4">
+        <div className="shadow-popover absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-xl bg-white p-4">
           <div className="mb-2 flex items-center justify-between">
             <SectionLabel>Subreddits to analyze</SectionLabel>
             <span className="text-xs text-zinc-400 tabular-nums">
@@ -1049,7 +1006,7 @@ function CompactSubredditPopover({
           <SubredditChipsField
             values={values}
             onChange={onChange}
-            onSubmit={handleSubmit}
+            onSubmit={handleAnalyze}
             autoFocus
             size="sm"
           />
@@ -1482,45 +1439,49 @@ export default function Home() {
     });
   }
 
-  const hasResults = !!result && result.ideas.length > 0;
   const showHero = !loading && !result && !error;
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-[11px] font-bold text-white">
+      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 sm:gap-3">
+          {/* Brand pill */}
+          <div className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-900 py-1.5 pl-1.5 pr-3 text-white sm:pl-2 sm:pr-4">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-900">
               SF
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-zinc-900">
+            </span>
+            <span className="hidden text-sm font-semibold tracking-tight sm:inline">
               SaaS Finder
             </span>
           </div>
 
-          {hasResults || loading ? (
-            <div className="flex flex-1 justify-end">
-              <CompactSubredditPopover
-                values={subreddits}
-                onChange={setSubreddits}
-                onSubmit={() => runAnalysis()}
-                loading={loading}
-                settings={settings}
-                onSettingsChange={setSettings}
-                models={models}
-                modelsLoading={modelsLoading}
-              />
-            </div>
-          ) : (
-            <a
-              href="https://github.com/Nova-Designs-Creative/validly"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-medium text-zinc-500 transition hover:text-zinc-900"
-            >
-              GitHub →
-            </a>
-          )}
+          {/* Subreddit popover (centered, fluid) */}
+          <div className="flex min-w-0 flex-1 justify-center">
+            <NavSubredditPopover
+              values={subreddits}
+              onChange={setSubreddits}
+              onAnalyze={() => runAnalysis()}
+              loading={loading}
+              settings={settings}
+              onSettingsChange={setSettings}
+              models={models}
+              modelsLoading={modelsLoading}
+            />
+          </div>
+
+          {/* Analyze action pill */}
+          <button
+            type="button"
+            onClick={() => runAnalysis()}
+            disabled={loading || subreddits.length === 0}
+            className="shrink-0 rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition active:scale-[0.96] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 disabled:active:scale-100 sm:px-5"
+          >
+            {loading
+              ? "Analyzing…"
+              : subreddits.length > 1
+                ? `Analyze ${subreddits.length}`
+                : "Analyze"}
+          </button>
         </div>
       </header>
 
@@ -1547,32 +1508,28 @@ export default function Home() {
               </div>
 
               <div className="space-y-3">
-                <SubredditEditor
-                  values={subreddits}
-                  onChange={setSubreddits}
-                  onSubmit={() => runAnalysis()}
-                  loading={loading}
-                  settings={settings}
-                  onSettingsChange={setSettings}
-                  models={models}
-                  modelsLoading={modelsLoading}
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <PresetMenu onPick={(subs) => setSubreddits(subs)} />
-                  <span className="text-xs text-zinc-400">
-                    or build your own list ·{" "}
-                    <span className="tabular-nums">{subreddits.length}/{MAX_SUBS}</span>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+                  <span className="text-zinc-500">
+                    Quick start with a preset:
                   </span>
-                  {subreddits.length > 0 ? (
+                  {PRESETS.slice(0, 3).map((preset) => (
                     <button
+                      key={preset.name}
                       type="button"
-                      onClick={() => setSubreddits([])}
-                      className="ml-auto text-xs text-zinc-500 transition hover:text-zinc-900"
+                      onClick={() => {
+                        const next = preset.subs.slice(0, MAX_SUBS);
+                        setSubreddits(next);
+                        runAnalysis(next);
+                      }}
+                      className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.97]"
                     >
-                      Clear all
+                      {preset.name}
                     </button>
-                  ) : null}
+                  ))}
                 </div>
+                <p className="text-xs text-zinc-400">
+                  or use the search bar above to add your own subreddits ↑
+                </p>
 
                 {redditOAuth === false && subreddits.length > 1 ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">

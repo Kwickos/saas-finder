@@ -1922,7 +1922,7 @@ export default function Home() {
         {showHero ? (
           <>
             {/* Hero */}
-            <section className="relative overflow-hidden">
+            <section className="relative min-h-[100svh] overflow-hidden">
               {/* Background illustration */}
               <Image
                 src="/hero-bg.webp"
@@ -1932,10 +1932,10 @@ export default function Home() {
                 sizes="100vw"
                 className="object-cover object-center"
               />
-              {/* Soft readability overlay so text stays legible over the image */}
+              {/* Bottom fade to white — no hard border into the next section */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-50/30 via-zinc-50/50 to-zinc-50"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white"
               />
 
               <div className="relative mx-auto max-w-6xl px-5 pt-24 pb-12 sm:pt-32 sm:pb-16">
@@ -1966,7 +1966,7 @@ export default function Home() {
             </section>
 
             {/* Sample output */}
-            <section className="border-t border-zinc-200 bg-white">
+            <section className="bg-white">
               <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
                 <div className="mx-auto mb-8 max-w-2xl">
                   <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">

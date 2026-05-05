@@ -760,6 +760,103 @@ function ModelPicker({
   );
 }
 
+function LanguagePicker({
+  value,
+  onChange,
+  theme = "light",
+}: {
+  value: LanguageCode;
+  onChange: (next: LanguageCode) => void;
+  theme?: "light" | "dark";
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isDark = theme === "dark";
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const selected = LANGUAGE_OPTIONS.find((opt) => opt.code === value);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={classNames(
+          "flex w-[120px] items-center justify-between gap-2 rounded-md px-2 py-1 text-sm font-medium transition",
+          isDark
+            ? classNames(
+                "border border-white/10 bg-white/5 text-white",
+                open
+                  ? "border-white/30 ring-2 ring-white/10"
+                  : "hover:bg-white/10",
+              )
+            : classNames(
+                "border bg-white text-zinc-700",
+                open
+                  ? "border-zinc-900 ring-2 ring-zinc-900/10"
+                  : "border-zinc-200 hover:border-zinc-300",
+              ),
+        )}
+      >
+        <span className="truncate">{selected?.label ?? "Language"}</span>
+        <ChevronIcon open={open} />
+      </button>
+
+      {open ? (
+        <div
+          className={classNames(
+            "shadow-modal absolute right-0 top-full z-40 mt-1 w-[140px] overflow-hidden rounded-lg",
+            isDark
+              ? "bg-zinc-950 ring-1 ring-white/10"
+              : "border border-zinc-200 bg-white",
+          )}
+        >
+          {LANGUAGE_OPTIONS.map((opt) => {
+            const isActive = opt.code === value;
+            return (
+              <button
+                key={opt.code}
+                type="button"
+                onClick={() => {
+                  onChange(opt.code);
+                  setOpen(false);
+                }}
+                className={classNames(
+                  "block w-full px-3 py-2 text-left text-sm transition",
+                  isActive
+                    ? isDark
+                      ? "bg-white text-zinc-900"
+                      : "bg-zinc-900 text-white"
+                    : isDark
+                      ? "text-white/80 hover:bg-white/5"
+                      : "text-zinc-800 hover:bg-zinc-50",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SettingsFields({
   settings,
   onChange,
@@ -775,9 +872,6 @@ function SettingsFields({
 }) {
   const isDark = theme === "dark";
   const labelCls = isDark ? "text-sm text-white/70" : "text-sm text-zinc-700";
-  const selectCls = isDark
-    ? "rounded-md border border-white/10 bg-white/5 px-2 py-1 text-sm font-medium text-white outline-none transition hover:bg-white/10 focus:border-white/30"
-    : "rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm font-medium text-zinc-700 outline-none transition hover:border-zinc-300 focus:border-zinc-900";
 
   return (
     <div className="space-y-2.5">
@@ -803,23 +897,11 @@ function SettingsFields({
       </div>
       <div className="flex items-center justify-between gap-3">
         <label className={labelCls}>Language</label>
-        <select
+        <LanguagePicker
           value={settings.language}
-          onChange={(e) =>
-            onChange({ ...settings, language: e.target.value as LanguageCode })
-          }
-          className={selectCls}
-        >
-          {LANGUAGE_OPTIONS.map((opt) => (
-            <option
-              key={opt.code}
-              value={opt.code}
-              className={isDark ? "bg-zinc-900 text-white" : ""}
-            >
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          onChange={(lang) => onChange({ ...settings, language: lang })}
+          theme={theme}
+        />
       </div>
       <div className="flex items-center justify-between gap-3">
         <label className={labelCls}>Model</label>

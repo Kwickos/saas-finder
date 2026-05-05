@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -559,24 +560,26 @@ function ModelPicker({
     };
   }, [open]);
 
-  // Center the selected model inside the scroll container when opening
-  useEffect(() => {
+  // Center the selected model inside the scroll container when opening.
+  // useLayoutEffect runs synchronously after DOM mutations and before paint,
+  // so the panel is mounted and laid out by the time we measure.
+  useLayoutEffect(() => {
     if (!open) return;
-    requestAnimationFrame(() => {
-      const container = listRef.current;
-      if (!container) return;
-      const active = container.querySelector<HTMLElement>(
-        '[data-active="true"]',
-      );
-      if (!active) return;
-      const containerHeight = container.clientHeight;
-      const targetTop =
-        active.offsetTop - containerHeight / 2 + active.offsetHeight / 2;
-      container.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: "instant" as ScrollBehavior,
-      });
-    });
+    const container = listRef.current;
+    if (!container) return;
+    const active = container.querySelector<HTMLElement>(
+      '[data-active="true"]',
+    );
+    if (!active) return;
+    // Account for sticky tier headers (~32px) by skewing the target up a bit
+    const stickyOffset = 32;
+    const containerHeight = container.clientHeight;
+    const target =
+      active.offsetTop -
+      (containerHeight - stickyOffset) / 2 +
+      active.offsetHeight / 2 -
+      stickyOffset;
+    container.scrollTop = Math.max(0, target);
   }, [open]);
 
   const hasModels =
@@ -738,9 +741,6 @@ function SettingsFields({
           onChange={(id) => onChange({ ...settings, model: id })}
         />
       </div>
-      {settings.model ? (
-        <p className="font-mono text-[11px] text-zinc-400">{settings.model}</p>
-      ) : null}
     </div>
   );
 }
@@ -927,18 +927,64 @@ function NavSubredditPopover({
     if (loading) setOpen(false);
   }, [loading]);
 
-  const VISIBLE = 2;
-  const visible = values.slice(0, VISIBLE);
-  const more = Math.max(0, values.length - VISIBLE);
-
   function handleAnalyze() {
     setOpen(false);
     onAnalyze();
   }
 
+  const [visibleCount, setVisibleCount] = useState(values.length);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const slotRef = useRef<HTMLSpanElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+
+  // Measure how many chips actually fit in the trigger and only render
+  // those — append "+N more" when at least one chip overflows.
+  useLayoutEffect(() => {
+    if (values.length === 0) {
+      setVisibleCount(0);
+      return;
+    }
+
+    function recompute() {
+      const slot = slotRef.current;
+      const ghost = ghostRef.current;
+      if (!slot || !ghost) return;
+
+      const available = slot.clientWidth;
+      const ghostChips = Array.from(
+        ghost.querySelectorAll<HTMLElement>("[data-ghost-chip]"),
+      );
+      const ghostMore = ghost.querySelector<HTMLElement>("[data-ghost-more]");
+      const moreWidth = ghostMore?.offsetWidth ?? 70;
+      const gap = 6;
+
+      let total = 0;
+      let count = 0;
+      for (let i = 0; i < ghostChips.length; i++) {
+        const chipWidth = ghostChips[i].offsetWidth;
+        const isLast = i === ghostChips.length - 1;
+        const reserveMore = isLast ? 0 : moreWidth + gap;
+        const next = total + chipWidth + (i > 0 ? gap : 0);
+        if (next + reserveMore > available) break;
+        total = next;
+        count = i + 1;
+      }
+      setVisibleCount(count);
+    }
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    if (triggerRef.current) ro.observe(triggerRef.current);
+    return () => ro.disconnect();
+  }, [values]);
+
+  const visible = values.slice(0, visibleCount);
+  const overflow = Math.max(0, values.length - visibleCount);
+
   return (
     <div className="relative w-full max-w-[520px]" ref={ref}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={classNames(
@@ -964,7 +1010,10 @@ function NavSubredditPopover({
           />
         </svg>
 
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+        <span
+          ref={slotRef}
+          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden"
+        >
           {values.length === 0 ? (
             <span className="truncate text-white/50">
               Add subreddits to analyze…
@@ -980,9 +1029,9 @@ function NavSubredditPopover({
                   {sub}
                 </span>
               ))}
-              {more > 0 ? (
+              {overflow > 0 ? (
                 <span className="shrink-0 text-xs text-white/60">
-                  +{more} more
+                  +{overflow} more
                 </span>
               ) : null}
             </>
@@ -993,6 +1042,33 @@ function NavSubredditPopover({
           <ChevronIcon open={open} />
         </span>
       </button>
+
+      {/* Hidden ghost row used purely to measure chip widths. Kept identical
+          in styling to the visible chips so measurements stay accurate. */}
+      <div
+        ref={ghostRef}
+        aria-hidden
+        className="pointer-events-none absolute -z-10 flex items-center gap-1.5 whitespace-nowrap opacity-0"
+        style={{
+          top: 0,
+          left: 0,
+          visibility: "hidden",
+        }}
+      >
+        {values.map((sub) => (
+          <span
+            key={`ghost-${sub}`}
+            data-ghost-chip
+            className="inline-flex items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[13px] font-medium text-white"
+          >
+            <span className="text-white/50">r/</span>
+            {sub}
+          </span>
+        ))}
+        <span data-ghost-more className="text-xs text-white/60">
+          +{values.length} more
+        </span>
+      </div>
 
       {open ? (
         <div className="shadow-popover absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-xl bg-white p-4">

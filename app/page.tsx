@@ -1779,7 +1779,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5">
+      <header className="sticky top-0 z-30 h-16 px-3 pt-3 sm:px-5">
         <div className="mx-auto flex w-full max-w-6xl items-start gap-2 sm:gap-3">
           {/* Brand pill */}
           <div className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-900 py-1.5 pl-1.5 pr-3 text-white sm:pl-2 sm:pr-4">

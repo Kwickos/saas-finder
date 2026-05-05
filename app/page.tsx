@@ -1125,19 +1125,21 @@ function NavSubredditPopover({
         </svg>
 
         {open ? (
-          <SubredditChipsField
-            values={values}
-            onChange={onChange}
-            onSubmit={handleAnalyze}
-            theme="dark"
-            autoFocus
-          />
+          <div className="animate-content-fade flex min-w-0 flex-1">
+            <SubredditChipsField
+              values={values}
+              onChange={onChange}
+              onSubmit={handleAnalyze}
+              theme="dark"
+              autoFocus
+            />
+          </div>
         ) : (
           <button
             ref={summarySlotRef}
             type="button"
             onClick={() => setOpen(true)}
-            className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
+            className="animate-content-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
           >
             {values.length === 0 ? (
               <span className="truncate text-white/50">
@@ -1215,7 +1217,7 @@ function NavSubredditPopover({
       ) : null}
 
       {open ? (
-        <div className="shadow-modal absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl bg-zinc-900 p-4 ring-1 ring-white/10">
+        <div className="animate-popover-slide shadow-modal absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl bg-zinc-900 p-4 ring-1 ring-white/10">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-medium text-white/50">Settings</span>
             <span className="text-xs text-white/40 tabular-nums">
@@ -1694,7 +1696,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 sm:gap-3">
+        <div className="mx-auto flex w-full max-w-6xl items-start gap-2 sm:gap-3">
           {/* Brand pill */}
           <div className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-900 py-1.5 pl-1.5 pr-3 text-white sm:pl-2 sm:pr-4">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-900">

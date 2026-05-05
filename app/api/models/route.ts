@@ -9,9 +9,19 @@ import type {
 export const runtime = "nodejs";
 export const revalidate = 1800; // 30 min
 
+type ORArchitecture = {
+  modality?: string;
+  input_modalities?: string[];
+  output_modalities?: string[];
+  tokenizer?: string;
+  instruct_type?: string | null;
+};
+
 type ORModel = {
   id: string;
   name?: string;
+  description?: string;
+  architecture?: ORArchitecture;
   pricing?: {
     prompt?: string | number;
     completion?: string | number;
@@ -35,9 +45,16 @@ const FAMILY_PREFIXES = [
   "perplexity/",
 ];
 
-// Drop legacy / niche / vision-only models
-const EXCLUDE_RE =
+// Legacy / niche / version-specific models we never want to surface.
+const EXCLUDE_LEGACY_RE =
   /davinci|text-(ada|babbage|curie|davinci)|gpt-3\.5|gpt-4-turbo|gpt-4-32k|claude-2|claude-instant|palm-|gemini-pro$|gemma-(2b|7b)/i;
+
+// Specialist models that output text but aren't general-purpose chat:
+// code-only assistants, safety/guardrail classifiers, embedding models,
+// audio I/O, image generators, raw base / completion checkpoints.
+// We want general instruction-following models for analysis tasks.
+const EXCLUDE_SPECIALIST_RE =
+  /(coder?|codex|codestral|devstral|code-instruct|guard|safeguard|moderat|safety|embed(ding)?|whisper|tts|voice|audio|dall-?e|sora|imagen|stable-diffusion|flux|midjourney|-image[-:]?\d|-vision-only|-base$|-completion$|prompt-?guard)/i;
 
 let cache: { data: ModelsResponse; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -81,7 +98,18 @@ export async function GET() {
     for (const m of json.data ?? []) {
       if (!m.id) continue;
       if (!FAMILY_PREFIXES.some((p) => m.id.startsWith(p))) continue;
-      if (EXCLUDE_RE.test(m.id)) continue;
+      if (EXCLUDE_LEGACY_RE.test(m.id)) continue;
+      if (EXCLUDE_SPECIALIST_RE.test(m.id)) continue;
+
+      // Architecture-based filtering: must accept text input and produce
+      // text-only output (no image/audio outputs, since we need the model
+      // to return JSON).
+      const arch = m.architecture;
+      const outputs = arch?.output_modalities ?? ["text"];
+      const inputs = arch?.input_modalities ?? ["text"];
+      if (!inputs.includes("text")) continue;
+      if (!outputs.includes("text")) continue;
+      if (outputs.some((o) => o !== "text")) continue; // image/audio out → drop
 
       const inputPrice = priceToPerMillion(m.pricing?.prompt);
       const outputPrice = priceToPerMillion(m.pricing?.completion);

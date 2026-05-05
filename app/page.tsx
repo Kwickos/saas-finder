@@ -2166,15 +2166,18 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="relative mt-auto h-[260px] overflow-hidden sm:h-[320px]">
+      <footer
+        className="relative mt-auto w-full overflow-hidden"
+        style={{ aspectRatio: "2400 / 1140" }}
+      >
         <Image
           src="/footer-bg.webp"
           alt=""
           fill
           sizes="100vw"
-          className="object-cover object-bottom"
+          className="object-cover"
         />
-        <div className="relative mx-auto flex max-w-6xl items-start justify-between px-5 pt-5 text-xs text-zinc-500 sm:pt-6">
+        <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-6xl items-start justify-between px-5 pt-5 text-xs text-zinc-600 sm:pt-7">
           <span>SaaS Finder · MIT licensed</span>
           <div className="flex items-center gap-4">
             <a

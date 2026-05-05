@@ -1217,7 +1217,8 @@ function NavSubredditPopover({
       ) : null}
 
       {open ? (
-        <div className="animate-popover-slide shadow-modal absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl bg-zinc-900 p-4 ring-1 ring-white/10">
+        <div className="absolute left-1/2 top-full z-30 mt-2 -translate-x-1/2">
+          <div className="animate-popover-slide shadow-modal w-[420px] max-w-[calc(100vw-1.5rem)] rounded-2xl bg-zinc-900 p-4 ring-1 ring-white/10">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-medium text-white/50">Settings</span>
             <span className="text-xs text-white/40 tabular-nums">
@@ -1261,6 +1262,7 @@ function NavSubredditPopover({
                 Done
               </button>
             </div>
+          </div>
           </div>
         </div>
       ) : null}

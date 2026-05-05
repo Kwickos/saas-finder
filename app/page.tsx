@@ -55,6 +55,44 @@ const PRESETS: Preset[] = [
 type Verdict = SaasIdea["verdict"];
 type SortKey = "score-desc" | "score-asc" | "recurrence-desc" | "name";
 
+type PreviewIdea = {
+  score: number;
+  name: string;
+  problem: string;
+  threads: number;
+  crossSub?: number;
+  demand: "Low" | "Medium" | "High";
+};
+
+const PREVIEW_IDEAS: PreviewIdea[] = [
+  {
+    score: 9,
+    name: "AI email automation for SMB founders",
+    problem:
+      "Solo founders need personalized email sequences but can't justify Mailchimp's pricing or learn its complexity. They paste prompts into ChatGPT and copy-paste manually.",
+    threads: 6,
+    crossSub: 3,
+    demand: "High",
+  },
+  {
+    score: 7,
+    name: "Inventory sync across e-commerce channels",
+    problem:
+      "Multi-channel sellers manage stock across Amazon, Shopify, eBay separately. Updates take hours, stockouts happen, and integrations are too expensive.",
+    threads: 4,
+    crossSub: 2,
+    demand: "High",
+  },
+  {
+    score: 6,
+    name: "Freelance contract generator from a 5-question form",
+    problem:
+      "Freelancers waste hours adapting generic templates per client and routinely miss key clauses (kill fees, IP, late penalties).",
+    threads: 3,
+    demand: "Medium",
+  },
+];
+
 const VERDICT_OPTIONS: Array<Verdict | "All"> = [
   "All",
   "Strong",
@@ -435,6 +473,64 @@ function IdeaSkeleton() {
         </div>
       </div>
     </li>
+  );
+}
+
+function PreviewIdeaCard({ idea }: { idea: PreviewIdea }) {
+  return (
+    <article className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] transition hover:border-zinc-300">
+      <div className="flex items-start gap-4">
+        <span
+          className={classNames(
+            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[17px] font-bold tabular-nums ring-1 ring-inset",
+            scoreBadge(idea.score),
+          )}
+        >
+          {idea.score}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-balance text-base font-semibold leading-snug text-zinc-900">
+            {idea.name}
+          </h3>
+          <p className="mt-1 line-clamp-2 text-[14px] leading-6 text-zinc-600">
+            {idea.problem}
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <RecurrenceBadge count={idea.threads} />
+            {idea.crossSub && idea.crossSub > 1 ? (
+              <CrossSubBadge subs={Array(idea.crossSub).fill("x")} />
+            ) : null}
+            {idea.demand === "High" ? (
+              <span className="rounded-md bg-zinc-900 px-2 py-0.5 text-xs font-medium text-white">
+                High demand
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function StepCard({
+  n,
+  title,
+  body,
+}: {
+  n: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5">
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-xs font-bold text-white">
+        {n}
+      </span>
+      <h3 className="mt-4 text-base font-semibold tracking-tight text-zinc-900">
+        {title}
+      </h3>
+      <p className="mt-1 text-sm leading-6 text-zinc-600">{body}</p>
+    </div>
   );
 }
 
@@ -1821,101 +1917,198 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8">
+      <main className="flex-1">
         {showHero ? (
-          <section className="py-10 sm:py-16">
-            <div className="mx-auto max-w-2xl space-y-6">
-              <div className="space-y-3">
-                <span className="inline-flex items-center rounded-md bg-zinc-900/5 px-2 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10">
-                  v0.1 · Free stack
-                </span>
-                <h1 className="text-balance text-4xl font-semibold tracking-[-0.02em] text-zinc-900 sm:text-5xl">
-                  Find recurring SaaS pain across multiple subreddits.
-                </h1>
-                <p className="text-pretty text-base leading-7 text-zinc-600">
-                  SaaS Finder pulls this week's hottest Reddit threads from up
-                  to {MAX_SUBS} subreddits, then asks an OpenRouter model to{" "}
-                  <span className="font-medium text-zinc-900">
-                    cluster pain points across communities
-                  </span>{" "}
-                  — the strongest signals are the ones that show up everywhere.
-                  One click and you get a build prompt for the SaaS.
-                </p>
-              </div>
+          <>
+            {/* Hero */}
+            <section className="relative overflow-hidden">
+              {/* Soft accent glow */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -top-32 right-0 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-orange-200/40 to-transparent blur-3xl"
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -top-20 left-1/4 h-[320px] w-[320px] rounded-full bg-gradient-to-br from-blue-200/30 to-transparent blur-3xl"
+              />
 
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-                  <span className="text-zinc-500">
-                    Quick start with a preset:
+              <div className="relative mx-auto max-w-6xl px-5 pt-16 pb-12 sm:pt-24 sm:pb-16">
+                <div className="max-w-3xl space-y-6">
+                  <span className="inline-flex items-center rounded-full bg-zinc-900/5 px-3 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10">
+                    v0.1 · Open source · Free stack
                   </span>
-                  {PRESETS.slice(0, 3).map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => {
-                        const next = preset.subs.slice(0, MAX_SUBS);
-                        setSubreddits(next);
-                        runAnalysis(next);
-                      }}
-                      className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.97]"
+
+                  <h1 className="text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.04em] text-zinc-900 sm:text-6xl lg:text-7xl">
+                    Real founders.
+                    <br />
+                    Real pain.
+                    <br />
+                    <span className="text-zinc-400">Real SaaS ideas.</span>
+                  </h1>
+
+                  <p className="text-pretty max-w-xl text-base leading-7 text-zinc-600 sm:text-lg">
+                    SaaS Finder pulls this week's top threads from up to{" "}
+                    {MAX_SUBS} subreddits, clusters recurring pain points with
+                    AI, and hands you a build prompt for each idea.{" "}
+                    <span className="font-medium text-zinc-900">
+                      In about 30 seconds.
+                    </span>
+                  </p>
+                </div>
+
+                <div className="mt-10 max-w-3xl space-y-3">
+                  <p className="text-xs font-medium text-zinc-500">
+                    Quick start
+                  </p>
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    {PRESETS.slice(0, 3).map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          const next = preset.subs.slice(0, MAX_SUBS);
+                          setSubreddits(next);
+                          runAnalysis(next);
+                        }}
+                        className="group flex items-start gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-left transition hover:border-zinc-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] active:scale-[0.98]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold text-zinc-900">
+                            {preset.name}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-zinc-500">
+                            r/{preset.subs.slice(0, 3).join(" · r/")}
+                          </div>
+                        </div>
+                        <span className="mt-0.5 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-zinc-900">
+                          →
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    or type your own subreddits in the search bar above ↑
+                  </p>
+
+                  {redditOAuth === false && subreddits.length > 1 ? (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                      Reddit OAuth not configured — analysing{" "}
+                      {subreddits.length} subreddits anonymously may hit rate
+                      limits.{" "}
+                      <a
+                        href="https://github.com/Kwickos/saas-finder#reddit-oauth-setup-2-minutes-free-no-reddit-account-purchases"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium underline underline-offset-2 hover:text-amber-950"
+                      >
+                        2-min setup
+                      </a>{" "}
+                      or stick to 1 subreddit for reliable results.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
+            {/* Sample output */}
+            <section className="border-t border-zinc-200 bg-white">
+              <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
+                <div className="mx-auto mb-8 max-w-2xl">
+                  <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Sample output
+                  </p>
+                  <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+                    What you'll actually get back.
+                  </h2>
+                  <p className="mt-3 text-pretty text-sm leading-6 text-zinc-600 sm:text-base">
+                    Each idea is scored, cited (with the exact threads that
+                    back it), and comes with monetization, pricing, and
+                    go-to-market notes — plus a markdown build prompt you
+                    paste straight into Claude, Cursor, or v0.
+                  </p>
+                </div>
+                <div className="mx-auto max-w-3xl space-y-3">
+                  {PREVIEW_IDEAS.map((idea, i) => (
+                    <div
+                      key={idea.name}
+                      className="animate-row-enter"
+                      style={{ animationDelay: `${i * 60}ms` }}
                     >
-                      {preset.name}
-                    </button>
+                      <PreviewIdeaCard idea={idea} />
+                    </div>
                   ))}
                 </div>
-                <p className="text-xs text-zinc-400">
-                  or use the search bar above to add your own subreddits ↑
-                </p>
-
-                {redditOAuth === false && subreddits.length > 1 ? (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                    Reddit OAuth not configured — analysing{" "}
-                    {subreddits.length} subreddits anonymously may hit rate
-                    limits.{" "}
-                    <a
-                      href="https://github.com/Kwickos/saas-finder#reddit-oauth-setup-2-minutes-free-no-reddit-account-purchases"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium underline underline-offset-2 hover:text-amber-950"
-                    >
-                      2-min setup
-                    </a>{" "}
-                    or stick to 1 subreddit for reliable results.
-                  </div>
-                ) : null}
               </div>
+            </section>
 
-              <ul className="grid gap-3 pt-6 text-sm leading-6 text-zinc-600 sm:grid-cols-3">
-                <li className="rounded-xl border border-zinc-200 bg-white p-4">
-                  <p className="font-medium text-zinc-900">Multi-sub scrape</p>
-                  <p className="mt-1 text-zinc-600">
-                    Up to 5 subreddits, fetched in parallel. Saved between
-                    sessions.
+            {/* How it works */}
+            <section className="border-t border-zinc-200">
+              <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
+                <div className="mx-auto mb-8 max-w-2xl">
+                  <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    How it works
                   </p>
-                </li>
-                <li className="rounded-xl border border-zinc-200 bg-white p-4">
-                  <p className="font-medium text-zinc-900">
-                    Cross-sub clustering
+                  <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+                    Three steps. ~30 seconds.
+                  </h2>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <StepCard
+                    n="1"
+                    title="Pick subreddits"
+                    body="Type your own or use a preset. Up to 5 subreddits at once. Reddit OAuth is optional — anonymous works for 1 sub."
+                  />
+                  <StepCard
+                    n="2"
+                    title="AI clusters pain"
+                    body="Top weekly threads + comments are sent to your chosen model. Pain points that recur across communities get top scores automatically."
+                  />
+                  <StepCard
+                    n="3"
+                    title="Get build prompts"
+                    body="One click on any idea generates a 2-page markdown brief: problem, opportunity, monetization, GTM, and source threads."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Tech stack */}
+            <section className="border-t border-zinc-200 bg-zinc-50">
+              <div className="mx-auto max-w-6xl px-5 py-10">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                  <p className="text-sm text-zinc-700">
+                    <span className="font-semibold text-zinc-900">
+                      Free stack.
+                    </span>{" "}
+                    <span className="text-zinc-500">
+                      Reddit JSON API · OpenRouter · Next.js · Open source
+                    </span>
                   </p>
-                  <p className="mt-1 text-zinc-600">
-                    Pain points appearing in 2+ subs get top scores
-                    automatically.
-                  </p>
-                </li>
-                <li className="rounded-xl border border-zinc-200 bg-white p-4">
-                  <p className="font-medium text-zinc-900">
-                    One-click build prompt
-                  </p>
-                  <p className="mt-1 text-zinc-600">
-                    Hand the result to Claude, Cursor, or v0 and start
-                    shipping.
-                  </p>
-                </li>
-              </ul>
-            </div>
-          </section>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                    <span>Pick any model:</span>
+                    {[
+                      "GPT-5",
+                      "Claude",
+                      "Gemini",
+                      "Llama",
+                      "DeepSeek",
+                      "Grok",
+                    ].map((m) => (
+                      <span
+                        key={m}
+                        className="rounded-md bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </>
         ) : null}
 
+        <div className="mx-auto w-full max-w-6xl px-5 py-8">
         {error ? (
           <section className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
             <p className="text-sm font-medium text-rose-800">
@@ -2044,6 +2237,7 @@ export default function Home() {
             </details>
           </section>
         ) : null}
+        </div>
       </main>
 
       {promptIdea && result ? (

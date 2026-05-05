@@ -1875,7 +1875,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 h-16 px-3 pt-3 sm:px-5">
+      <header className="fixed inset-x-0 top-0 z-30 h-16 px-3 pt-3 sm:px-5">
         <div className="mx-auto flex w-full max-w-6xl items-start gap-2 sm:gap-3">
           {/* Brand pill */}
           <div className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-900 py-1.5 pl-1.5 pr-3 text-white sm:pl-2 sm:pr-4">
@@ -1932,7 +1932,7 @@ export default function Home() {
                 className="pointer-events-none absolute -top-20 left-1/4 h-[320px] w-[320px] rounded-full bg-gradient-to-br from-blue-200/30 to-transparent blur-3xl"
               />
 
-              <div className="relative mx-auto max-w-6xl px-5 pt-16 pb-12 sm:pt-24 sm:pb-16">
+              <div className="relative mx-auto max-w-6xl px-5 pt-24 pb-12 sm:pt-32 sm:pb-16">
                 <div className="max-w-3xl space-y-6">
                   <span className="inline-flex items-center rounded-full bg-zinc-900/5 px-3 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10">
                     v0.1 · Open source
@@ -1956,9 +1956,6 @@ export default function Home() {
                   </p>
                 </div>
 
-                <p className="mt-6 text-xs text-zinc-400">
-                  Type subreddits in the search bar above ↑
-                </p>
               </div>
             </section>
 
@@ -2027,7 +2024,7 @@ export default function Home() {
           </>
         ) : null}
 
-        <div className="mx-auto w-full max-w-6xl px-5 py-8">
+        <div className="mx-auto w-full max-w-6xl px-5 pt-24 pb-8">
         {error ? (
           <section className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
             <p className="text-sm font-medium text-rose-800">

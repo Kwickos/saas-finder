@@ -2177,10 +2177,10 @@ export default function Home() {
           sizes="100vw"
           className="object-cover"
         />
-        {/* Top fade to white — seamless blend with the page above */}
+        {/* Top fade to the page bg — seamless blend with the section above */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-1/3 bg-gradient-to-b from-white via-white/60 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-1/3 bg-gradient-to-b from-[#fafaf9] via-[#fafaf9]/60 to-transparent"
         />
         <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-6xl items-start justify-between px-5 pt-5 text-xs text-zinc-600 sm:pt-7">
           <span>SaaS Finder · MIT licensed</span>

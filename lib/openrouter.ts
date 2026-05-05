@@ -2,7 +2,20 @@ import { jsonrepair } from "jsonrepair";
 import { z } from "zod";
 
 import { getServerEnv } from "@/lib/env";
-import type { SaasIdea, StructuredRedditData } from "@/lib/types";
+import type {
+  LanguageCode,
+  SaasIdea,
+  StructuredRedditData,
+} from "@/lib/types";
+
+const LANGUAGE_NAMES: Record<LanguageCode, string> = {
+  en: "English",
+  fr: "French",
+  es: "Spanish",
+  de: "German",
+  pt: "Portuguese",
+  it: "Italian",
+};
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const AI_POST_HARD_LIMIT = 30;
@@ -186,6 +199,10 @@ function parseIdeas(raw: string): SaasIdea[] {
     return null;
   };
 
+  const snippet = cleaned.slice(0, 220).replace(/\s+/g, " ").trim();
+  const failHint = (msg: string) =>
+    `Model returned an unparseable response: ${msg}. Raw start: ${snippet}`;
+
   const objectStart = cleaned.indexOf("{");
   const objectEnd = cleaned.lastIndexOf("}");
   if (objectStart !== -1 && objectEnd > objectStart) {
@@ -213,21 +230,40 @@ function parseIdeas(raw: string): SaasIdea[] {
         return ideaArraySchema.parse(JSON.parse(jsonrepair(candidate)));
       } catch (err) {
         throw new Error(
-          err instanceof Error
-            ? `Failed to parse OpenRouter JSON: ${err.message}`
-            : "Failed to parse OpenRouter JSON.",
+          failHint(err instanceof Error ? err.message : "unknown error"),
         );
       }
     }
   }
 
-  throw new Error(
-    "OpenRouter response did not include a JSON object or array.",
-  );
+  throw new Error(failHint("no JSON object or array found"));
+}
+
+function buildSystemPrompt(language: LanguageCode): string {
+  if (language === "en") return SYSTEM_PROMPT;
+  const lang = LANGUAGE_NAMES[language];
+  const langInstruction = `
+
+================================================================================
+LANGUAGE
+================================================================================
+
+Write the following fields in ${lang}: idea_name, problem, opportunity,
+user_complaints, monetization_model, pricing_hint, revenue_potential,
+go_to_market.
+
+Keep these fields in their original form: existing_solutions and
+similar_competitors (product/company names should stay as-is).
+
+The "verdict" field MUST remain one of "Weak" | "Decent" | "Strong".
+The "demand_level" field MUST remain one of "Low" | "Medium" | "High".`;
+  return SYSTEM_PROMPT + langInstruction;
 }
 
 export async function analyzeWithAI(
   data: StructuredRedditData,
+  language: LanguageCode = "en",
+  modelOverride?: string,
 ): Promise<SaasIdea[]> {
   const env = getServerEnv();
   const compact = compactStructuredData(data);
@@ -239,29 +275,50 @@ export async function analyzeWithAI(
   if (env.openrouterAppUrl) headers["HTTP-Referer"] = env.openrouterAppUrl;
   if (env.openrouterAppName) headers["X-Title"] = env.openrouterAppName;
 
+  const modelId =
+    modelOverride && modelOverride.trim() ? modelOverride : env.openrouterModel;
+
   const body = {
-    model: env.openrouterModel,
+    model: modelId,
     temperature: 0.2,
-    max_tokens: 4500,
+    max_tokens: 4000,
     response_format: { type: "json_object" as const },
     messages: [
-      { role: "system" as const, content: SYSTEM_PROMPT },
+      { role: "system" as const, content: buildSystemPrompt(language) },
       { role: "user" as const, content: JSON.stringify(compact) },
     ],
   };
 
-  const response = await fetch(OPENROUTER_ENDPOINT, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-    signal: AbortSignal.timeout(env.openrouterTimeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(OPENROUTER_ENDPOINT, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(env.openrouterTimeoutMs),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      const seconds = Math.round(env.openrouterTimeoutMs / 1000);
+      throw new Error(
+        `Model "${modelId}" timed out after ${seconds}s. ${
+          modelId.endsWith(":free")
+            ? "Free models are queued and often slow — pick a paid model in Settings."
+            : "Try a faster model (Cheap or Mid tier in Settings) or reduce posts/comments per subreddit."
+        }`,
+      );
+    }
+    if (err instanceof Error) {
+      throw new Error(`OpenRouter request failed: ${err.message}`);
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "");
     throw new Error(
-      `OpenRouter request failed (${response.status} ${response.statusText}): ${errorBody.slice(0, 240)}`,
+      `OpenRouter ${response.status} ${response.statusText} on model "${modelId}": ${errorBody.slice(0, 240)}`,
     );
   }
 

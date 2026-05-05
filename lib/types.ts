@@ -39,3 +39,54 @@ export interface AnalyzeIdeasResponse {
   source: StructuredRedditData;
   ideas: SaasIdea[];
 }
+
+export type LanguageCode = "en" | "fr" | "es" | "de" | "pt" | "it";
+
+export interface AnalysisSettings {
+  postsPerSubreddit: number;
+  commentsPerPost: number;
+  language: LanguageCode;
+  model?: string;
+}
+
+export const DEFAULT_SETTINGS: AnalysisSettings = {
+  postsPerSubreddit: 8,
+  commentsPerPost: 3,
+  language: "en",
+};
+
+export type ModelTier = "free" | "cheap" | "mid" | "premium";
+
+export interface CuratedModel {
+  id: string;
+  name: string;
+  inputPrice: number;
+  outputPrice: number;
+  contextLength: number;
+}
+
+export interface ModelsResponse {
+  tiers: Record<ModelTier, CuratedModel[]>;
+  fetchedAt: string;
+}
+
+export const MODEL_TIER_LABELS: Record<ModelTier, string> = {
+  free: "Free",
+  cheap: "Cheap · under $1/M",
+  mid: "Mid · $1-5/M",
+  premium: "Premium · $5+/M",
+};
+
+export const SETTINGS_LIMITS = {
+  postsPerSubreddit: { min: 3, max: 15 },
+  commentsPerPost: { min: 2, max: 7 },
+};
+
+export const LANGUAGE_OPTIONS: { code: LanguageCode; label: string }[] = [
+  { code: "en", label: "English" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+  { code: "de", label: "Deutsch" },
+  { code: "pt", label: "Português" },
+  { code: "it", label: "Italiano" },
+];

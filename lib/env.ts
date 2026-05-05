@@ -17,6 +17,8 @@ const serverEnvSchema = z.object({
   OPENROUTER_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   REDDIT_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   REDDIT_USER_AGENT: z.string().trim().optional(),
+  REDDIT_CLIENT_ID: z.string().trim().optional(),
+  REDDIT_CLIENT_SECRET: z.string().trim().optional(),
 });
 
 export type ServerEnv = {
@@ -27,6 +29,8 @@ export type ServerEnv = {
   openrouterTimeoutMs: number;
   redditTimeoutMs: number;
   redditUserAgent: string;
+  redditClientId?: string;
+  redditClientSecret?: string;
 };
 
 let cachedEnv: ServerEnv | null = null;
@@ -44,6 +48,8 @@ export function getServerEnv(): ServerEnv {
     OPENROUTER_TIMEOUT_MS: process.env.OPENROUTER_TIMEOUT_MS,
     REDDIT_TIMEOUT_MS: process.env.REDDIT_TIMEOUT_MS,
     REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,
+    REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
+    REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
   });
 
   cachedEnv = {
@@ -55,7 +61,9 @@ export function getServerEnv(): ServerEnv {
     redditTimeoutMs: parsed.REDDIT_TIMEOUT_MS ?? 15000,
     redditUserAgent:
       parsed.REDDIT_USER_AGENT ||
-      "saas-finder/0.1 (+https://github.com/yourusername/saas-finder)",
+      "web:saas-finder:0.1 (by /u/saas-finder)",
+    redditClientId: parsed.REDDIT_CLIENT_ID,
+    redditClientSecret: parsed.REDDIT_CLIENT_SECRET,
   };
 
   return cachedEnv;

@@ -42,8 +42,24 @@ Open http://localhost:3000 and analyze any subreddit.
 | `OPENROUTER_APP_URL` | no | — | Sent as `HTTP-Referer` for OpenRouter analytics/ranking |
 | `OPENROUTER_APP_NAME` | no | — | Sent as `X-Title` |
 | `OPENROUTER_TIMEOUT_MS` | no | `90000` | Hard timeout on the AI call |
+| `REDDIT_CLIENT_ID` | recommended | — | Reddit OAuth client_id — see setup below. Without it you're capped at ~10 req/min and multi-sub analyses will fail. |
+| `REDDIT_CLIENT_SECRET` | no | — | Only set for "web" or "script" Reddit apps. Leave empty for "installed" apps. |
+| `REDDIT_USER_AGENT` | no | generic | Format: `<platform>:<app>:<version> (by /u/<user>)` |
 | `REDDIT_TIMEOUT_MS` | no | `15000` | Per-request timeout for Reddit |
-| `REDDIT_USER_AGENT` | no | generic | Reddit asks for a descriptive UA — set yours to avoid throttling |
+
+### Reddit OAuth setup (2 minutes, free, no Reddit account purchases)
+
+The anonymous Reddit JSON API is throttled to roughly 10 requests/minute, which means analysing more than 1 subreddit reliably needs OAuth. With OAuth you get **100 requests/minute per client_id**.
+
+1. Go to <https://www.reddit.com/prefs/apps>
+2. Reddit will link to its [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) — read & acknowledge it. **Personal / non-commercial use stays in the free tier (100 QPM)**. Reselling Reddit data or training ML models on it would require a separate commercial agreement; that's not what this app does.
+3. Scroll to the bottom → **create another app...**
+4. Pick **installed app** (this avoids needing a client secret)
+5. Name: `saas-finder` · description: anything · about url: blank · redirect uri: `http://localhost:8080`
+6. After creation, copy the random string just below the app name — that's your `client_id`
+7. Drop it in `.env.local` as `REDDIT_CLIENT_ID=...`
+
+The app uses Reddit's **`installed_client`** OAuth grant, which authenticates the client without needing a Reddit user account. Tokens are cached in memory for ~1 hour and refreshed automatically. Requests are routed to `oauth.reddit.com` and we read the `X-Ratelimit-*` headers to pace requests dynamically.
 
 ### Picking a model
 

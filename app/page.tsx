@@ -12,13 +12,22 @@ import {
   buildDevPrompt,
   distinctSubredditsFromThreads,
 } from "@/lib/build-prompt";
-import type {
-  AnalyzeIdeasResponse,
-  RedditPost,
-  SaasIdea,
+import {
+  DEFAULT_SETTINGS,
+  LANGUAGE_OPTIONS,
+  MODEL_TIER_LABELS,
+  SETTINGS_LIMITS,
+  type AnalysisSettings,
+  type AnalyzeIdeasResponse,
+  type LanguageCode,
+  type ModelTier,
+  type ModelsResponse,
+  type RedditPost,
+  type SaasIdea,
 } from "@/lib/types";
 
 const STORAGE_KEY = "saas-finder:subreddits";
+const SETTINGS_STORAGE_KEY = "saas-finder:settings";
 const MAX_SUBS = 5;
 
 type Preset = { name: string; subs: string[] };
@@ -43,7 +52,6 @@ const PRESETS: Preset[] = [
 ];
 
 type Verdict = SaasIdea["verdict"];
-type Demand = SaasIdea["demand_level"];
 type SortKey = "score-desc" | "score-asc" | "recurrence-desc" | "name";
 
 const VERDICT_OPTIONS: Array<Verdict | "All"> = [
@@ -67,18 +75,6 @@ function scoreBadge(score: number) {
   if (score >= 8) return "bg-emerald-50 text-emerald-700 ring-emerald-200";
   if (score >= 5) return "bg-amber-50 text-amber-700 ring-amber-200";
   return "bg-rose-50 text-rose-700 ring-rose-200";
-}
-
-function verdictTone(verdict: Verdict) {
-  if (verdict === "Strong") return "bg-emerald-100 text-emerald-800";
-  if (verdict === "Decent") return "bg-amber-100 text-amber-800";
-  return "bg-zinc-100 text-zinc-600";
-}
-
-function demandTone(demand: Demand) {
-  if (demand === "High") return "bg-zinc-900 text-white";
-  if (demand === "Medium") return "bg-zinc-200 text-zinc-700";
-  return "bg-zinc-100 text-zinc-500";
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -115,7 +111,7 @@ function ScoreChip({ score }: { score: number }) {
   return (
     <span
       className={classNames(
-        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[13px] font-semibold tabular-nums ring-1 ring-inset",
+        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[17px] font-bold tabular-nums ring-1 ring-inset",
         scoreBadge(score),
       )}
       aria-label={`Score ${score} out of 10`}
@@ -173,16 +169,6 @@ function CrossSubBadge({ subs }: { subs: string[] }) {
   );
 }
 
-function MiniMeta({ label, value }: { label: string; value: string }) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs font-medium text-zinc-500">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-zinc-800">{value}</p>
-    </div>
-  );
-}
-
 function IdeaDetail({
   idea,
   onBuildPrompt,
@@ -191,55 +177,104 @@ function IdeaDetail({
   onBuildPrompt: () => void;
 }) {
   return (
-    <div className="space-y-5 pb-6 pl-12 pr-2 pt-1 text-sm leading-7 text-zinc-700">
-      <p className="text-[15px] leading-7 text-zinc-800">{idea.opportunity}</p>
+    <div className="border-t border-zinc-100 bg-zinc-50/40 px-3 py-6 sm:pl-[3.75rem] sm:pr-5">
+      {/* Hero — the opportunity */}
+      <p className="text-pretty text-[17px] leading-[1.7] text-zinc-900">
+        {idea.opportunity}
+      </p>
 
+      {/* Primary CTA right after hero */}
+      <button
+        type="button"
+        onClick={onBuildPrompt}
+        className="group mt-5 inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-[14px] font-semibold text-white transition active:scale-[0.96] hover:bg-zinc-800"
+      >
+        Build this with AI
+        <span className="transition-transform group-hover:translate-x-0.5">
+          →
+        </span>
+      </button>
+
+      <hr className="my-7 border-zinc-200" />
+
+      {/* Evidence — complaints */}
       {idea.user_complaints.length > 0 ? (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-500">
+        <section className="mb-6">
+          <h4 className="mb-2 text-sm font-semibold text-zinc-900">
             What users complain about
-          </p>
-          <ul className="ml-4 list-disc space-y-0.5 marker:text-zinc-300">
+          </h4>
+          <ul className="ml-4 list-disc space-y-1 text-[14px] leading-7 text-zinc-700 marker:text-zinc-300">
             {idea.user_complaints.map((c, i) => (
               <li key={`${i}-${c.slice(0, 20)}`}>{c}</li>
             ))}
           </ul>
-        </div>
+        </section>
       ) : null}
 
+      {/* Market context */}
       {idea.existing_solutions.length > 0 ||
       idea.similar_competitors.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <section className="mb-6 grid gap-4 text-[14px] sm:grid-cols-2">
           {idea.existing_solutions.length > 0 ? (
-            <p className="text-zinc-800">
-              <span className="text-zinc-500">Existing solutions — </span>
-              {idea.existing_solutions.join(", ")}
-            </p>
+            <div>
+              <p className="text-xs font-medium text-zinc-500">
+                Existing solutions
+              </p>
+              <p className="mt-1 leading-6 text-zinc-700">
+                {idea.existing_solutions.join(", ")}
+              </p>
+            </div>
           ) : null}
           {idea.similar_competitors.length > 0 ? (
-            <p className="text-zinc-800">
-              <span className="text-zinc-500">Competitors — </span>
-              {idea.similar_competitors.join(", ")}
-            </p>
+            <div>
+              <p className="text-xs font-medium text-zinc-500">
+                Direct competitors
+              </p>
+              <p className="mt-1 leading-6 text-zinc-700">
+                {idea.similar_competitors.join(", ")}
+              </p>
+            </div>
           ) : null}
-        </div>
+        </section>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MiniMeta label="Monetization" value={idea.monetization_model} />
-        <MiniMeta label="Pricing" value={idea.pricing_hint} />
-        <MiniMeta label="Revenue ceiling" value={idea.revenue_potential} />
-      </div>
-
-      <MiniMeta label="Go to market" value={idea.go_to_market} />
-
-      {idea.source_threads.length > 0 ? (
+      {/* Business model — small stats strip */}
+      <section className="my-6 grid gap-4 border-y border-zinc-200 py-4 text-[14px] sm:grid-cols-3">
         <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-500">
-            {idea.source_threads.length} source thread
-            {idea.source_threads.length === 1 ? "" : "s"}
+          <p className="text-xs font-medium text-zinc-500">Monetization</p>
+          <p className="mt-1 leading-6 text-zinc-900">
+            {idea.monetization_model}
           </p>
-          <ul className="space-y-0.5">
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500">Pricing</p>
+          <p className="mt-1 leading-6 text-zinc-900">{idea.pricing_hint}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500">Revenue ceiling</p>
+          <p className="mt-1 leading-6 text-zinc-900">
+            {idea.revenue_potential}
+          </p>
+        </div>
+      </section>
+
+      {/* Go to market */}
+      <section className="mb-6 text-[14px]">
+        <p className="text-xs font-medium text-zinc-500">Go to market</p>
+        <p className="mt-1 leading-7 text-zinc-700">{idea.go_to_market}</p>
+      </section>
+
+      {/* Sources — collapsed by default */}
+      {idea.source_threads.length > 0 ? (
+        <details className="text-[14px]">
+          <summary className="inline-flex cursor-pointer select-none items-center gap-1.5 text-xs font-medium text-zinc-500 transition hover:text-zinc-900 marker:hidden [&::-webkit-details-marker]:hidden">
+            <span className="inline-block transition-transform group-open:rotate-90">
+              ›
+            </span>
+            Show {idea.source_threads.length} source thread
+            {idea.source_threads.length === 1 ? "" : "s"}
+          </summary>
+          <ul className="mt-2 space-y-1">
             {idea.source_threads.map((thread, index) => {
               const sub = thread.thread_url.match(/\/r\/([^/]+)/i)?.[1];
               return (
@@ -266,26 +301,8 @@ function IdeaDetail({
               );
             })}
           </ul>
-        </div>
+        </details>
       ) : null}
-
-      <div className="flex justify-end pt-1">
-        <button
-          type="button"
-          onClick={onBuildPrompt}
-          className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800"
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path
-              d="M8 2v3m0 6v3m6-6h-3M5 8H2m9.5-4.5L9 6m-2 4l-2.5 2.5m7-7L9.5 5.5m-3 5L4 13"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
-          Build prompt
-        </button>
-      </div>
     </div>
   );
 }
@@ -295,11 +312,13 @@ function IdeaRow({
   expanded,
   onToggle,
   onBuildPrompt,
+  animationDelayMs = 0,
 }: {
   idea: SaasIdea;
   expanded: boolean;
   onToggle: () => void;
   onBuildPrompt: () => void;
+  animationDelayMs?: number;
 }) {
   const distinctSubs = useMemo(
     () => distinctSubredditsFromThreads(idea.source_threads),
@@ -307,46 +326,41 @@ function IdeaRow({
   );
 
   return (
-    <li className={expanded ? "bg-zinc-50/60" : ""}>
+    <li
+      className={classNames(
+        "animate-row-enter",
+        expanded && "bg-zinc-50/40",
+      )}
+      style={{ animationDelay: `${animationDelayMs}ms` }}
+    >
       <button
         type="button"
         onClick={onToggle}
-        className="group flex w-full items-start gap-4 px-2 py-4 text-left transition hover:bg-zinc-50/80"
+        className="group flex w-full items-start gap-4 px-3 py-5 text-left transition hover:bg-zinc-50/80"
         aria-expanded={expanded}
       >
         <ScoreChip score={idea.score} />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="truncate text-[15px] font-semibold leading-6 text-zinc-900">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="truncate text-balance text-base font-semibold leading-snug text-zinc-900">
               {idea.idea_name}
             </h3>
-            <span className="shrink-0 pt-0.5">
+            <span className="shrink-0 pt-1">
               <ChevronIcon open={expanded} />
             </span>
           </div>
-          <p className="mt-0.5 line-clamp-2 text-sm leading-6 text-zinc-600">
+          <p className="mt-1 line-clamp-2 text-[14px] leading-6 text-zinc-600">
             {idea.problem}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <RecurrenceBadge count={idea.source_threads.length} />
-            <span
-              className={classNames(
-                "rounded-md px-2 py-0.5 text-xs font-medium",
-                demandTone(idea.demand_level),
-              )}
-            >
-              {idea.demand_level} demand
-            </span>
             <CrossSubBadge subs={distinctSubs} />
-            <span
-              className={classNames(
-                "rounded-md px-2 py-0.5 text-xs font-medium",
-                verdictTone(idea.verdict),
-              )}
-            >
-              {idea.verdict}
-            </span>
+            {idea.demand_level === "High" ? (
+              <span className="rounded-md bg-zinc-900 px-2 py-0.5 text-xs font-medium text-white">
+                High demand
+              </span>
+            ) : null}
           </div>
         </div>
       </button>
@@ -420,6 +434,167 @@ function IdeaSkeleton() {
         </div>
       </div>
     </li>
+  );
+}
+
+function Stepper({
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        disabled={value <= min}
+        className="flex h-8 w-8 items-center justify-center text-zinc-500 transition active:scale-[0.96] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100"
+        aria-label="Decrease"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path
+            d="M2 5h6"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      <span className="w-7 text-center text-sm font-medium tabular-nums text-zinc-900">
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(max, value + 1))}
+        disabled={value >= max}
+        className="flex h-8 w-8 items-center justify-center text-zinc-500 transition active:scale-[0.96] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100"
+        aria-label="Increase"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path
+            d="M5 2v6M2 5h6"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+function formatPrice(p: number): string {
+  if (p === 0) return "Free";
+  if (p < 1) return `$${p.toFixed(2)}/M`;
+  return `$${p.toFixed(p < 10 ? 2 : 0)}/M`;
+}
+
+function ModelPicker({
+  models,
+  loading,
+  value,
+  onChange,
+}: {
+  models: ModelsResponse | null;
+  loading: boolean;
+  value: string | undefined;
+  onChange: (id: string | undefined) => void;
+}) {
+  const tierOrder: ModelTier[] = ["free", "cheap", "mid", "premium"];
+  const hasModels =
+    models &&
+    tierOrder.some((t) => (models.tiers[t]?.length ?? 0) > 0);
+
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value || undefined)}
+      disabled={loading || !hasModels}
+      className="max-w-[180px] truncate rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm font-medium text-zinc-700 outline-none transition hover:border-zinc-300 focus:border-zinc-900 disabled:opacity-60"
+    >
+      <option value="">{loading ? "Loading…" : "Default (env)"}</option>
+      {hasModels
+        ? tierOrder.map((tier) => {
+            const list = models!.tiers[tier];
+            if (!list || list.length === 0) return null;
+            return (
+              <optgroup key={tier} label={MODEL_TIER_LABELS[tier]}>
+                {list.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} · {formatPrice(m.inputPrice)}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })
+        : null}
+    </select>
+  );
+}
+
+function SettingsFields({
+  settings,
+  onChange,
+  models,
+  modelsLoading,
+}: {
+  settings: AnalysisSettings;
+  onChange: (next: AnalysisSettings) => void;
+  models: ModelsResponse | null;
+  modelsLoading: boolean;
+}) {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-sm text-zinc-700">Posts per subreddit</label>
+        <Stepper
+          value={settings.postsPerSubreddit}
+          min={SETTINGS_LIMITS.postsPerSubreddit.min}
+          max={SETTINGS_LIMITS.postsPerSubreddit.max}
+          onChange={(n) => onChange({ ...settings, postsPerSubreddit: n })}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-sm text-zinc-700">Comments per post</label>
+        <Stepper
+          value={settings.commentsPerPost}
+          min={SETTINGS_LIMITS.commentsPerPost.min}
+          max={SETTINGS_LIMITS.commentsPerPost.max}
+          onChange={(n) => onChange({ ...settings, commentsPerPost: n })}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-sm text-zinc-700">Language</label>
+        <select
+          value={settings.language}
+          onChange={(e) =>
+            onChange({ ...settings, language: e.target.value as LanguageCode })
+          }
+          className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm font-medium text-zinc-700 outline-none transition hover:border-zinc-300 focus:border-zinc-900"
+        >
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <option key={opt.code} value={opt.code}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-sm text-zinc-700">Model</label>
+        <ModelPicker
+          models={models}
+          loading={modelsLoading}
+          value={settings.model}
+          onChange={(id) => onChange({ ...settings, model: id })}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -568,31 +743,75 @@ function SubredditEditor({
   onChange,
   onSubmit,
   loading,
+  settings,
+  onSettingsChange,
+  models,
+  modelsLoading,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   onSubmit: () => void;
   loading: boolean;
+  settings: AnalysisSettings;
+  onSettingsChange: (next: AnalysisSettings) => void;
+  models: ModelsResponse | null;
+  modelsLoading: boolean;
 }) {
+  const [showSettings, setShowSettings] = useState(false);
   return (
-    <div className="flex w-full items-stretch gap-2">
-      <SubredditChipsField
-        values={values}
-        onChange={onChange}
-        onSubmit={onSubmit}
-      />
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={loading || values.length === 0}
-        className="shrink-0 rounded-xl bg-zinc-900 px-5 py-3 text-[15px] font-medium text-white transition hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500"
-      >
-        {loading
-          ? "Analyzing…"
-          : values.length > 1
-            ? `Analyze ${values.length} subs`
-            : "Analyze"}
-      </button>
+    <div className="w-full space-y-3">
+      <div className="flex w-full items-stretch gap-2">
+        <SubredditChipsField
+          values={values}
+          onChange={onChange}
+          onSubmit={onSubmit}
+        />
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={loading || values.length === 0}
+          className="shrink-0 rounded-xl bg-zinc-900 px-5 py-3 text-[15px] font-medium text-white transition active:scale-[0.96] hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 disabled:active:scale-100"
+        >
+          {loading
+            ? "Analyzing…"
+            : values.length > 1
+              ? `Analyze ${values.length} subs`
+              : "Analyze"}
+        </button>
+      </div>
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSettings((v) => !v)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 transition hover:text-zinc-900"
+        >
+          <span
+            className={classNames(
+              "transition-transform",
+              showSettings && "rotate-90",
+            )}
+          >
+            ›
+          </span>
+          {showSettings ? "Hide settings" : "Settings"}
+          <span className="text-zinc-400">
+            ·{" "}
+            {settings.postsPerSubreddit}p / {settings.commentsPerPost}c ·{" "}
+            {LANGUAGE_OPTIONS.find((l) => l.code === settings.language)?.label ??
+              settings.language}
+          </span>
+        </button>
+        {showSettings ? (
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-4">
+            <SettingsFields
+              settings={settings}
+              onChange={onSettingsChange}
+              models={models}
+              modelsLoading={modelsLoading}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -602,11 +821,19 @@ function CompactSubredditPopover({
   onChange,
   onSubmit,
   loading,
+  settings,
+  onSettingsChange,
+  models,
+  modelsLoading,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   onSubmit: () => void;
   loading: boolean;
+  settings: AnalysisSettings;
+  onSettingsChange: (next: AnalysisSettings) => void;
+  models: ModelsResponse | null;
+  modelsLoading: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -679,7 +906,7 @@ function CompactSubredditPopover({
         type="button"
         onClick={onSubmit}
         disabled={loading || values.length === 0}
-        className="shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500"
+        className="shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition active:scale-[0.96] hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 disabled:active:scale-100"
       >
         {loading
           ? "Analyzing…"
@@ -689,7 +916,7 @@ function CompactSubredditPopover({
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-zinc-200 bg-white p-3 shadow-xl">
+        <div className="shadow-popover absolute right-0 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] rounded-xl bg-white p-4">
           <div className="mb-2 flex items-center justify-between">
             <SectionLabel>Subreddits to analyze</SectionLabel>
             <span className="text-xs text-zinc-400 tabular-nums">
@@ -705,7 +932,19 @@ function CompactSubredditPopover({
             size="sm"
           />
 
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-zinc-100 pt-3">
+          <div className="mt-5">
+            <SectionLabel>Settings</SectionLabel>
+            <div className="mt-2">
+              <SettingsFields
+                settings={settings}
+                onChange={onSettingsChange}
+                models={models}
+                modelsLoading={modelsLoading}
+              />
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-2">
             <PresetMenu onPick={onChange} />
             <div className="flex items-center gap-1.5">
               {values.length > 0 ? (
@@ -833,11 +1072,11 @@ function PromptModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      className="animate-modal-enter fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       onClick={onClose}
     >
       <div
-        className="flex h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:h-[85vh] sm:rounded-2xl"
+        className="shadow-modal animate-modal-card-enter flex h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white sm:h-[85vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-zinc-200 px-5 py-4">
@@ -874,7 +1113,7 @@ function PromptModal({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-5 py-3">
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-500 tabular-nums">
             {prompt.length.toLocaleString()} chars · ~
             {Math.ceil(prompt.length / 4).toLocaleString()} tokens
           </span>
@@ -882,7 +1121,7 @@ function PromptModal({
             <button
               type="button"
               onClick={handleDownload}
-              className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-100"
+              className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition active:scale-[0.96] hover:border-zinc-300 hover:bg-zinc-100"
             >
               Download .md
             </button>
@@ -890,7 +1129,7 @@ function PromptModal({
               type="button"
               onClick={handleCopy}
               className={classNames(
-                "rounded-md px-3 py-1.5 text-xs font-semibold text-white transition",
+                "rounded-md px-3 py-1.5 text-xs font-semibold text-white transition active:scale-[0.96]",
                 copied
                   ? "bg-emerald-600 hover:bg-emerald-700"
                   : "bg-zinc-900 hover:bg-zinc-800",
@@ -907,6 +1146,7 @@ function PromptModal({
 
 export default function Home() {
   const [subreddits, setSubreddits] = useState<string[]>(["saas"]);
+  const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
   const [hydrated, setHydrated] = useState(false);
   const [activeSubreddits, setActiveSubreddits] = useState<string[] | null>(
     null,
@@ -921,6 +1161,40 @@ export default function Home() {
   const [sort, setSort] = useState<SortKey>("score-desc");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [promptIdea, setPromptIdea] = useState<SaasIdea | null>(null);
+
+  const [models, setModels] = useState<ModelsResponse | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [redditOAuth, setRedditOAuth] = useState<boolean | null>(null);
+
+  // Fetch curated model list + server status once
+  useEffect(() => {
+    let cancelled = false;
+    setModelsLoading(true);
+    fetch("/api/models")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
+      .then((data: ModelsResponse) => {
+        if (!cancelled) setModels(data);
+      })
+      .catch(() => {
+        /* models stay null — picker shows Default only */
+      })
+      .finally(() => {
+        if (!cancelled) setModelsLoading(false);
+      });
+
+    fetch("/api/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.reddit) setRedditOAuth(Boolean(data.reddit.oauth));
+      })
+      .catch(() => {
+        /* keep null */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Hydrate from localStorage
   useEffect(() => {
@@ -940,6 +1214,15 @@ export default function Home() {
     } catch {
       /* ignore */
     }
+    try {
+      const savedSettings = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings) as Partial<AnalysisSettings>;
+        setSettings((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch {
+      /* ignore */
+    }
     setHydrated(true);
   }, []);
 
@@ -952,6 +1235,18 @@ export default function Home() {
       /* ignore */
     }
   }, [subreddits, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify(settings),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [settings, hydrated]);
 
   // Loading timer
   useEffect(() => {
@@ -984,7 +1279,7 @@ export default function Home() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subreddits: cleaned }),
+        body: JSON.stringify({ subreddits: cleaned, settings }),
       });
 
       const payload = (await response.json()) as AnalyzeIdeasResponse & {
@@ -1071,6 +1366,10 @@ export default function Home() {
                 onChange={setSubreddits}
                 onSubmit={() => runAnalysis()}
                 loading={loading}
+                settings={settings}
+                onSettingsChange={setSettings}
+                models={models}
+                modelsLoading={modelsLoading}
               />
             </div>
           ) : (
@@ -1094,10 +1393,10 @@ export default function Home() {
                 <span className="inline-flex items-center rounded-md bg-zinc-900/5 px-2 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10">
                   v0.1 · Free stack
                 </span>
-                <h1 className="text-4xl font-semibold tracking-[-0.02em] text-zinc-900 sm:text-5xl">
+                <h1 className="text-balance text-4xl font-semibold tracking-[-0.02em] text-zinc-900 sm:text-5xl">
                   Find recurring SaaS pain across multiple subreddits.
                 </h1>
-                <p className="text-base leading-7 text-zinc-600">
+                <p className="text-pretty text-base leading-7 text-zinc-600">
                   SaaS Finder pulls this week's hottest Reddit threads from up
                   to {MAX_SUBS} subreddits, then asks an OpenRouter model to{" "}
                   <span className="font-medium text-zinc-900">
@@ -1114,6 +1413,10 @@ export default function Home() {
                   onChange={setSubreddits}
                   onSubmit={() => runAnalysis()}
                   loading={loading}
+                  settings={settings}
+                  onSettingsChange={setSettings}
+                  models={models}
+                  modelsLoading={modelsLoading}
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   <PresetMenu onPick={(subs) => setSubreddits(subs)} />
@@ -1131,6 +1434,23 @@ export default function Home() {
                     </button>
                   ) : null}
                 </div>
+
+                {redditOAuth === false && subreddits.length > 1 ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                    Reddit OAuth not configured — analysing{" "}
+                    {subreddits.length} subreddits anonymously may hit rate
+                    limits.{" "}
+                    <a
+                      href="https://github.com/Kwickos/saas-finder#reddit-oauth-setup-2-minutes-free-no-reddit-account-purchases"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium underline underline-offset-2 hover:text-amber-950"
+                    >
+                      2-min setup
+                    </a>{" "}
+                    or stick to 1 subreddit for reliable results.
+                  </div>
+                ) : null}
               </div>
 
               <ul className="grid gap-3 pt-6 text-sm leading-6 text-zinc-600 sm:grid-cols-3">
@@ -1201,7 +1521,7 @@ export default function Home() {
           <section>
             {/* Quiet meta + filter row */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-3 text-sm">
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-zinc-600">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-zinc-600 tabular-nums">
                 <span className="font-semibold text-zinc-900">
                   {stats?.total ?? 0} ideas
                 </span>
@@ -1251,13 +1571,14 @@ export default function Home() {
 
             {filteredIdeas.length > 0 ? (
               <ul className="divide-y divide-zinc-100">
-                {filteredIdeas.map((idea) => (
+                {filteredIdeas.map((idea, idx) => (
                   <IdeaRow
                     key={`${idea.idea_name}-${idea.problem.slice(0, 40)}`}
                     idea={idea}
                     expanded={expanded.has(idea.idea_name)}
                     onToggle={() => toggleIdea(idea.idea_name)}
                     onBuildPrompt={() => setPromptIdea(idea)}
+                    animationDelayMs={Math.min(idx, 10) * 50}
                   />
                 ))}
               </ul>

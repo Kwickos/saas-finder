@@ -495,6 +495,39 @@ function formatPrice(p: number): string {
   return `$${p.toFixed(p < 10 ? 2 : 0)}/M`;
 }
 
+const MODEL_TIER_ORDER: ModelTier[] = ["free", "cheap", "mid", "premium"];
+
+function tierOfModel(
+  modelId: string | undefined,
+  models: ModelsResponse | null,
+): ModelTier | null {
+  if (!modelId || !models) return null;
+  for (const t of MODEL_TIER_ORDER) {
+    if (models.tiers[t]?.some((m) => m.id === modelId)) return t;
+  }
+  return null;
+}
+
+function findModel(
+  modelId: string | undefined,
+  models: ModelsResponse | null,
+): { id: string; name: string; inputPrice: number } | null {
+  if (!modelId || !models) return null;
+  for (const t of MODEL_TIER_ORDER) {
+    const hit = models.tiers[t]?.find((m) => m.id === modelId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function tierDot(tier: ModelTier | null): string {
+  if (tier === "free") return "bg-zinc-400";
+  if (tier === "cheap") return "bg-emerald-500";
+  if (tier === "mid") return "bg-amber-500";
+  if (tier === "premium") return "bg-violet-500";
+  return "bg-zinc-300";
+}
+
 function ModelPicker({
   models,
   loading,
@@ -504,37 +537,123 @@ function ModelPicker({
   models: ModelsResponse | null;
   loading: boolean;
   value: string | undefined;
-  onChange: (id: string | undefined) => void;
+  onChange: (id: string) => void;
 }) {
-  const tierOrder: ModelTier[] = ["free", "cheap", "mid", "premium"];
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   const hasModels =
-    models &&
-    tierOrder.some((t) => (models.tiers[t]?.length ?? 0) > 0);
+    models && MODEL_TIER_ORDER.some((t) => (models.tiers[t]?.length ?? 0) > 0);
+  const selected = findModel(value, models);
+  const selectedTier = tierOfModel(value, models);
 
   return (
-    <select
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || undefined)}
-      disabled={loading || !hasModels}
-      className="max-w-[180px] truncate rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm font-medium text-zinc-700 outline-none transition hover:border-zinc-300 focus:border-zinc-900 disabled:opacity-60"
-    >
-      <option value="">{loading ? "Loading…" : "Default (env)"}</option>
-      {hasModels
-        ? tierOrder.map((tier) => {
-            const list = models!.tiers[tier];
-            if (!list || list.length === 0) return null;
-            return (
-              <optgroup key={tier} label={MODEL_TIER_LABELS[tier]}>
-                {list.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} · {formatPrice(m.inputPrice)}
-                  </option>
-                ))}
-              </optgroup>
-            );
-          })
-        : null}
-    </select>
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={loading || !hasModels}
+        className={classNames(
+          "flex w-[200px] items-center gap-2 rounded-md border bg-white px-2 py-1 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+          open
+            ? "border-zinc-900 ring-2 ring-zinc-900/10"
+            : "border-zinc-200 hover:border-zinc-300",
+        )}
+      >
+        {selected ? (
+          <>
+            <span
+              className={classNames(
+                "h-1.5 w-1.5 shrink-0 rounded-full",
+                tierDot(selectedTier),
+              )}
+            />
+            <span className="flex-1 truncate font-medium text-zinc-900">
+              {selected.name}
+            </span>
+            <span className="shrink-0 text-xs text-zinc-500 tabular-nums">
+              {formatPrice(selected.inputPrice)}
+            </span>
+          </>
+        ) : (
+          <span className="flex-1 truncate text-zinc-500">
+            {loading ? "Loading models…" : "Select a model"}
+          </span>
+        )}
+        <ChevronIcon open={open} />
+      </button>
+
+      {open && models ? (
+        <div className="shadow-popover absolute right-0 top-full z-40 mt-1 w-[320px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl bg-white">
+          <div className="scrollbar-thin max-h-[60vh] overflow-y-auto">
+            {MODEL_TIER_ORDER.map((tier) => {
+              const list = models.tiers[tier];
+              if (!list || list.length === 0) return null;
+              return (
+                <div key={tier}>
+                  <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-zinc-100 bg-zinc-50/95 px-3 py-1.5 text-xs font-medium text-zinc-500 backdrop-blur">
+                    <span
+                      className={classNames(
+                        "h-1.5 w-1.5 rounded-full",
+                        tierDot(tier),
+                      )}
+                    />
+                    {MODEL_TIER_LABELS[tier]}
+                  </div>
+                  {list.map((m) => {
+                    const isActive = m.id === value;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          onChange(m.id);
+                          setOpen(false);
+                        }}
+                        className={classNames(
+                          "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition",
+                          isActive
+                            ? "bg-zinc-900 text-white"
+                            : "text-zinc-800 hover:bg-zinc-50",
+                        )}
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          {m.name}
+                        </span>
+                        <span
+                          className={classNames(
+                            "shrink-0 text-xs tabular-nums",
+                            isActive ? "text-zinc-300" : "text-zinc-500",
+                          )}
+                        >
+                          {formatPrice(m.inputPrice)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -594,6 +713,9 @@ function SettingsFields({
           onChange={(id) => onChange({ ...settings, model: id })}
         />
       </div>
+      {settings.model ? (
+        <p className="font-mono text-[11px] text-zinc-400">{settings.model}</p>
+      ) : null}
     </div>
   );
 }
@@ -1195,6 +1317,23 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  // Auto-pick a default model when /api/models loads and the user hasn't
+  // chosen one yet (or the previously stored one is no longer offered).
+  // Order of preference: cheap → free → mid → premium.
+  useEffect(() => {
+    if (!hydrated || !models) return;
+    if (settings.model && findModel(settings.model, models)) return;
+
+    const preference: ModelTier[] = ["cheap", "free", "mid", "premium"];
+    for (const t of preference) {
+      const first = models.tiers[t]?.[0];
+      if (first) {
+        setSettings((s) => ({ ...s, model: first.id }));
+        return;
+      }
+    }
+  }, [models, hydrated, settings.model]);
 
   // Hydrate from localStorage
   useEffect(() => {

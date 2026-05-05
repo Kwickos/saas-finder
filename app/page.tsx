@@ -1932,15 +1932,20 @@ export default function Home() {
                 sizes="100vw"
                 className="object-cover object-center"
               />
-              {/* Bottom fade to white — no hard border into the next section */}
+              {/* Left wash so dark text stays readable over the bright sky */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/85 via-white/40 to-transparent"
+              />
+              {/* Bottom fade to white — seamless into next section */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-b from-transparent to-white"
               />
 
-              <div className="relative mx-auto max-w-6xl px-5 pt-24 pb-12 sm:pt-32 sm:pb-16">
-                <div className="max-w-3xl space-y-6">
-                  <span className="inline-flex items-center rounded-full bg-zinc-900/5 px-3 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10">
+              <div className="relative mx-auto flex min-h-[100svh] max-w-6xl items-center px-5 py-20">
+                <div className="max-w-2xl space-y-6">
+                  <span className="inline-flex items-center rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10 backdrop-blur-sm">
                     v0.1 · Open source
                   </span>
 
@@ -1949,10 +1954,10 @@ export default function Home() {
                     <br />
                     Real pain.
                     <br />
-                    <span className="text-zinc-400">Real SaaS ideas.</span>
+                    <span className="text-zinc-500">Real SaaS ideas.</span>
                   </h1>
 
-                  <p className="text-pretty max-w-xl text-base leading-7 text-zinc-600 sm:text-lg">
+                  <p className="text-pretty max-w-xl text-base leading-7 text-zinc-700 sm:text-lg">
                     SaaS Finder pulls this week's top threads from up to{" "}
                     {MAX_SUBS} subreddits, clusters recurring pain points with
                     AI, and hands you a build prompt for each idea.{" "}
@@ -1961,7 +1966,6 @@ export default function Home() {
                     </span>
                   </p>
                 </div>
-
               </div>
             </section>
 

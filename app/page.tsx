@@ -443,19 +443,34 @@ function Stepper({
   min,
   max,
   onChange,
+  theme = "light",
 }: {
   value: number;
   min: number;
   max: number;
   onChange: (next: number) => void;
+  theme?: "light" | "dark";
 }) {
+  const isDark = theme === "dark";
   return (
-    <div className="inline-flex items-center rounded-md border border-zinc-200 bg-white">
+    <div
+      className={classNames(
+        "inline-flex items-center rounded-md",
+        isDark
+          ? "border border-white/10 bg-white/5"
+          : "border border-zinc-200 bg-white",
+      )}
+    >
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
-        className="flex h-8 w-8 items-center justify-center text-zinc-500 transition active:scale-[0.96] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100"
+        className={classNames(
+          "flex h-8 w-8 items-center justify-center transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100",
+          isDark
+            ? "text-white/60 hover:text-white"
+            : "text-zinc-500 hover:text-zinc-900",
+        )}
         aria-label="Decrease"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -467,14 +482,24 @@ function Stepper({
           />
         </svg>
       </button>
-      <span className="w-7 text-center text-sm font-medium tabular-nums text-zinc-900">
+      <span
+        className={classNames(
+          "w-7 text-center text-sm font-medium tabular-nums",
+          isDark ? "text-white" : "text-zinc-900",
+        )}
+      >
         {value}
       </span>
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
-        className="flex h-8 w-8 items-center justify-center text-zinc-500 transition active:scale-[0.96] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100"
+        className={classNames(
+          "flex h-8 w-8 items-center justify-center transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100",
+          isDark
+            ? "text-white/60 hover:text-white"
+            : "text-zinc-500 hover:text-zinc-900",
+        )}
         aria-label="Increase"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -534,12 +559,15 @@ function ModelPicker({
   loading,
   value,
   onChange,
+  theme = "light",
 }: {
   models: ModelsResponse | null;
   loading: boolean;
   value: string | undefined;
   onChange: (id: string) => void;
+  theme?: "light" | "dark";
 }) {
+  const isDark = theme === "dark";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -594,10 +622,20 @@ function ModelPicker({
         onClick={() => setOpen((v) => !v)}
         disabled={loading || !hasModels}
         className={classNames(
-          "flex w-[200px] items-center gap-2 rounded-md border bg-white px-2 py-1 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-60",
-          open
-            ? "border-zinc-900 ring-2 ring-zinc-900/10"
-            : "border-zinc-200 hover:border-zinc-300",
+          "flex w-[200px] items-center gap-2 rounded-md px-2 py-1 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+          isDark
+            ? classNames(
+                "border border-white/10 bg-white/5",
+                open
+                  ? "border-white/30 ring-2 ring-white/10"
+                  : "hover:bg-white/10",
+              )
+            : classNames(
+                "border bg-white",
+                open
+                  ? "border-zinc-900 ring-2 ring-zinc-900/10"
+                  : "border-zinc-200 hover:border-zinc-300",
+              ),
         )}
       >
         {selected ? (
@@ -608,15 +646,30 @@ function ModelPicker({
                 tierDot(selectedTier),
               )}
             />
-            <span className="flex-1 truncate font-medium text-zinc-900">
+            <span
+              className={classNames(
+                "flex-1 truncate font-medium",
+                isDark ? "text-white" : "text-zinc-900",
+              )}
+            >
               {selected.name}
             </span>
-            <span className="shrink-0 text-xs text-zinc-500 tabular-nums">
+            <span
+              className={classNames(
+                "shrink-0 text-xs tabular-nums",
+                isDark ? "text-white/50" : "text-zinc-500",
+              )}
+            >
               {formatPrice(selected.inputPrice)}
             </span>
           </>
         ) : (
-          <span className="flex-1 truncate text-zinc-500">
+          <span
+            className={classNames(
+              "flex-1 truncate",
+              isDark ? "text-white/50" : "text-zinc-500",
+            )}
+          >
             {loading ? "Loading models…" : "Select a model"}
           </span>
         )}
@@ -624,7 +677,12 @@ function ModelPicker({
       </button>
 
       {open && models ? (
-        <div className="shadow-popover absolute right-0 top-full z-40 mt-1 w-[320px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl bg-white">
+        <div
+          className={classNames(
+            "shadow-modal absolute right-0 top-full z-40 mt-1 w-[320px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl",
+            isDark ? "bg-zinc-950 ring-1 ring-white/10" : "bg-white",
+          )}
+        >
           <div
             ref={listRef}
             className="scrollbar-thin max-h-[60vh] overflow-y-auto"
@@ -634,7 +692,14 @@ function ModelPicker({
               if (!list || list.length === 0) return null;
               return (
                 <div key={tier}>
-                  <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-zinc-100 bg-zinc-50/95 px-3 py-1.5 text-xs font-medium text-zinc-500 backdrop-blur">
+                  <div
+                    className={classNames(
+                      "sticky top-0 z-10 flex items-center gap-2 border-b px-3 py-1.5 text-xs font-medium backdrop-blur",
+                      isDark
+                        ? "border-white/5 bg-zinc-900/95 text-white/50"
+                        : "border-zinc-100 bg-zinc-50/95 text-zinc-500",
+                    )}
+                  >
                     <span
                       className={classNames(
                         "h-1.5 w-1.5 rounded-full",
@@ -657,8 +722,12 @@ function ModelPicker({
                         className={classNames(
                           "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition",
                           isActive
-                            ? "bg-zinc-900 text-white"
-                            : "text-zinc-800 hover:bg-zinc-50",
+                            ? isDark
+                              ? "bg-white text-zinc-900"
+                              : "bg-zinc-900 text-white"
+                            : isDark
+                              ? "text-white/80 hover:bg-white/5"
+                              : "text-zinc-800 hover:bg-zinc-50",
                         )}
                       >
                         <span className="min-w-0 flex-1 truncate">
@@ -667,7 +736,13 @@ function ModelPicker({
                         <span
                           className={classNames(
                             "shrink-0 text-xs tabular-nums",
-                            isActive ? "text-zinc-300" : "text-zinc-500",
+                            isActive
+                              ? isDark
+                                ? "text-zinc-500"
+                                : "text-zinc-300"
+                              : isDark
+                                ? "text-white/40"
+                                : "text-zinc-500",
                           )}
                         >
                           {formatPrice(m.inputPrice)}
@@ -690,55 +765,70 @@ function SettingsFields({
   onChange,
   models,
   modelsLoading,
+  theme = "light",
 }: {
   settings: AnalysisSettings;
   onChange: (next: AnalysisSettings) => void;
   models: ModelsResponse | null;
   modelsLoading: boolean;
+  theme?: "light" | "dark";
 }) {
+  const isDark = theme === "dark";
+  const labelCls = isDark ? "text-sm text-white/70" : "text-sm text-zinc-700";
+  const selectCls = isDark
+    ? "rounded-md border border-white/10 bg-white/5 px-2 py-1 text-sm font-medium text-white outline-none transition hover:bg-white/10 focus:border-white/30"
+    : "rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm font-medium text-zinc-700 outline-none transition hover:border-zinc-300 focus:border-zinc-900";
+
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between gap-3">
-        <label className="text-sm text-zinc-700">Posts per subreddit</label>
+        <label className={labelCls}>Posts per subreddit</label>
         <Stepper
           value={settings.postsPerSubreddit}
           min={SETTINGS_LIMITS.postsPerSubreddit.min}
           max={SETTINGS_LIMITS.postsPerSubreddit.max}
           onChange={(n) => onChange({ ...settings, postsPerSubreddit: n })}
+          theme={theme}
         />
       </div>
       <div className="flex items-center justify-between gap-3">
-        <label className="text-sm text-zinc-700">Comments per post</label>
+        <label className={labelCls}>Comments per post</label>
         <Stepper
           value={settings.commentsPerPost}
           min={SETTINGS_LIMITS.commentsPerPost.min}
           max={SETTINGS_LIMITS.commentsPerPost.max}
           onChange={(n) => onChange({ ...settings, commentsPerPost: n })}
+          theme={theme}
         />
       </div>
       <div className="flex items-center justify-between gap-3">
-        <label className="text-sm text-zinc-700">Language</label>
+        <label className={labelCls}>Language</label>
         <select
           value={settings.language}
           onChange={(e) =>
             onChange({ ...settings, language: e.target.value as LanguageCode })
           }
-          className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm font-medium text-zinc-700 outline-none transition hover:border-zinc-300 focus:border-zinc-900"
+          className={selectCls}
         >
           {LANGUAGE_OPTIONS.map((opt) => (
-            <option key={opt.code} value={opt.code}>
+            <option
+              key={opt.code}
+              value={opt.code}
+              className={isDark ? "bg-zinc-900 text-white" : ""}
+            >
               {opt.label}
             </option>
           ))}
         </select>
       </div>
       <div className="flex items-center justify-between gap-3">
-        <label className="text-sm text-zinc-700">Model</label>
+        <label className={labelCls}>Model</label>
         <ModelPicker
           models={models}
           loading={modelsLoading}
           value={settings.model}
           onChange={(id) => onChange({ ...settings, model: id })}
+          theme={theme}
         />
       </div>
     </div>
@@ -752,6 +842,7 @@ function SubredditChipsField({
   autoFocus = false,
   size = "md",
   theme = "light",
+  onFocus,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
@@ -759,6 +850,7 @@ function SubredditChipsField({
   autoFocus?: boolean;
   size?: "sm" | "md";
   theme?: "light" | "dark";
+  onFocus?: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -837,11 +929,11 @@ function SubredditChipsField({
   return (
     <div
       className={classNames(
-        "flex min-w-0 flex-1 items-center gap-1.5",
+        "flex min-w-0 flex-1 flex-wrap items-center gap-1.5",
         isDark
-          ? "scrollbar-thin overflow-x-auto whitespace-nowrap"
+          ? "py-0.5"
           : classNames(
-              "flex-wrap rounded-xl border bg-white transition",
+              "rounded-xl border bg-white transition",
               "border-zinc-200 focus-within:border-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/10",
               size === "sm" ? "px-2 py-1.5" : "px-3 py-2",
             ),
@@ -891,6 +983,7 @@ function SubredditChipsField({
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onInputKeyDown}
         onPaste={onPaste}
+        onFocus={onFocus}
         onBlur={() => draft.trim() && add(draft)}
         placeholder={inputPlaceholder}
         autoComplete="off"
@@ -961,7 +1054,7 @@ function NavSubredditPopover({
     <div className="relative w-full max-w-[520px]" ref={ref}>
       <div
         className={classNames(
-          "flex w-full items-center gap-2 rounded-full bg-zinc-900 py-1.5 pl-3 pr-1.5 text-sm text-white transition",
+          "flex w-full items-start gap-2 rounded-3xl bg-zinc-900 py-2 pl-3 pr-2 text-sm text-white transition",
           "focus-within:ring-2 focus-within:ring-white/15",
           open && "ring-2 ring-white/15",
         )}
@@ -971,7 +1064,7 @@ function NavSubredditPopover({
           height="14"
           viewBox="0 0 16 16"
           fill="none"
-          className="shrink-0 text-white/40"
+          className="mt-1 shrink-0 text-white/40"
           aria-hidden
         >
           <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
@@ -987,6 +1080,7 @@ function NavSubredditPopover({
           values={values}
           onChange={onChange}
           onSubmit={onAnalyze}
+          onFocus={() => setOpen(true)}
           theme="dark"
         />
 
@@ -994,7 +1088,7 @@ function NavSubredditPopover({
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={classNames(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition",
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition",
             open
               ? "bg-white/15 text-white"
               : "text-white/60 hover:bg-white/10 hover:text-white",
@@ -1016,10 +1110,10 @@ function NavSubredditPopover({
       </div>
 
       {open ? (
-        <div className="shadow-popover absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-xl bg-white p-4">
+        <div className="shadow-modal absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl bg-zinc-900 p-4 ring-1 ring-white/10">
           <div className="mb-3 flex items-center justify-between">
-            <SectionLabel>Settings</SectionLabel>
-            <span className="text-xs text-zinc-400 tabular-nums">
+            <span className="text-xs font-medium text-white/50">Settings</span>
+            <span className="text-xs text-white/40 tabular-nums">
               {values.length}/{MAX_SUBS} subs
             </span>
           </div>
@@ -1029,16 +1123,17 @@ function NavSubredditPopover({
             onChange={onSettingsChange}
             models={models}
             modelsLoading={modelsLoading}
+            theme="dark"
           />
 
           <div className="mt-5 flex items-center justify-between gap-2">
-            <PresetMenu onPick={onChange} />
+            <PresetMenu onPick={onChange} theme="dark" />
             <div className="flex items-center gap-1.5">
               {values.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-zinc-500 transition hover:text-zinc-900"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-white/50 transition hover:text-white"
                 >
                   Clear
                 </button>
@@ -1047,14 +1142,14 @@ function NavSubredditPopover({
                 type="button"
                 onClick={handleAnalyze}
                 disabled={loading || values.length === 0}
-                className="rounded-md bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white transition active:scale-[0.96] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                className="rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-zinc-900 transition active:scale-[0.96] hover:bg-zinc-100 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/40"
               >
                 Run
               </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
               >
                 Done
               </button>
@@ -1066,9 +1161,16 @@ function NavSubredditPopover({
   );
 }
 
-function PresetMenu({ onPick }: { onPick: (subs: string[]) => void }) {
+function PresetMenu({
+  onPick,
+  theme = "light",
+}: {
+  onPick: (subs: string[]) => void;
+  theme?: "light" | "dark";
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isDark = theme === "dark";
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -1083,12 +1185,24 @@ function PresetMenu({ onPick }: { onPick: (subs: string[]) => void }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+        className={classNames(
+          "rounded-md px-3 py-1.5 text-xs font-medium transition",
+          isDark
+            ? "border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
+            : "border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50",
+        )}
       >
         Presets ▾
       </button>
       {open ? (
-        <div className="absolute left-0 top-full z-30 mt-1 w-64 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg">
+        <div
+          className={classNames(
+            "shadow-modal absolute left-0 top-full z-30 mt-1 w-64 overflow-hidden rounded-lg",
+            isDark
+              ? "bg-zinc-950 ring-1 ring-white/10"
+              : "border border-zinc-200 bg-white",
+          )}
+        >
           {PRESETS.map((p) => (
             <button
               key={p.name}
@@ -1097,10 +1211,25 @@ function PresetMenu({ onPick }: { onPick: (subs: string[]) => void }) {
                 onPick(p.subs.slice(0, MAX_SUBS));
                 setOpen(false);
               }}
-              className="block w-full px-3 py-2 text-left text-sm transition hover:bg-zinc-50"
+              className={classNames(
+                "block w-full px-3 py-2 text-left text-sm transition",
+                isDark ? "hover:bg-white/5" : "hover:bg-zinc-50",
+              )}
             >
-              <div className="font-medium text-zinc-900">{p.name}</div>
-              <div className="mt-0.5 truncate text-xs text-zinc-500">
+              <div
+                className={classNames(
+                  "font-medium",
+                  isDark ? "text-white" : "text-zinc-900",
+                )}
+              >
+                {p.name}
+              </div>
+              <div
+                className={classNames(
+                  "mt-0.5 truncate text-xs",
+                  isDark ? "text-white/40" : "text-zinc-500",
+                )}
+              >
                 r/{p.subs.join(", r/")}
               </div>
             </button>

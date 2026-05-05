@@ -1935,7 +1935,7 @@ export default function Home() {
               <div className="relative mx-auto max-w-6xl px-5 pt-16 pb-12 sm:pt-24 sm:pb-16">
                 <div className="max-w-3xl space-y-6">
                   <span className="inline-flex items-center rounded-full bg-zinc-900/5 px-3 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-900/10">
-                    v0.1 · Open source · Free stack
+                    v0.1 · Open source
                   </span>
 
                   <h1 className="text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.04em] text-zinc-900 sm:text-6xl lg:text-7xl">
@@ -1956,57 +1956,9 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="mt-10 max-w-3xl space-y-3">
-                  <p className="text-xs font-medium text-zinc-500">
-                    Quick start
-                  </p>
-                  <div className="grid gap-2.5 sm:grid-cols-3">
-                    {PRESETS.slice(0, 3).map((preset) => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => {
-                          const next = preset.subs.slice(0, MAX_SUBS);
-                          setSubreddits(next);
-                          runAnalysis(next);
-                        }}
-                        className="group flex items-start gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-left transition hover:border-zinc-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] active:scale-[0.98]"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-zinc-900">
-                            {preset.name}
-                          </div>
-                          <div className="mt-0.5 truncate text-xs text-zinc-500">
-                            r/{preset.subs.slice(0, 3).join(" · r/")}
-                          </div>
-                        </div>
-                        <span className="mt-0.5 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-zinc-900">
-                          →
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-zinc-400">
-                    or type your own subreddits in the search bar above ↑
-                  </p>
-
-                  {redditOAuth === false && subreddits.length > 1 ? (
-                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                      Reddit OAuth not configured — analysing{" "}
-                      {subreddits.length} subreddits anonymously may hit rate
-                      limits.{" "}
-                      <a
-                        href="https://github.com/Kwickos/saas-finder#reddit-oauth-setup-2-minutes-free-no-reddit-account-purchases"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium underline underline-offset-2 hover:text-amber-950"
-                      >
-                        2-min setup
-                      </a>{" "}
-                      or stick to 1 subreddit for reliable results.
-                    </div>
-                  ) : null}
-                </div>
+                <p className="mt-6 text-xs text-zinc-400">
+                  Type subreddits in the search bar above ↑
+                </p>
               </div>
             </section>
 
@@ -2072,39 +2024,6 @@ export default function Home() {
               </div>
             </section>
 
-            {/* Tech stack */}
-            <section className="border-t border-zinc-200 bg-zinc-50">
-              <div className="mx-auto max-w-6xl px-5 py-10">
-                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                  <p className="text-sm text-zinc-700">
-                    <span className="font-semibold text-zinc-900">
-                      Free stack.
-                    </span>{" "}
-                    <span className="text-zinc-500">
-                      Reddit JSON API · OpenRouter · Next.js · Open source
-                    </span>
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                    <span>Pick any model:</span>
-                    {[
-                      "GPT-5",
-                      "Claude",
-                      "Gemini",
-                      "Llama",
-                      "DeepSeek",
-                      "Grok",
-                    ].map((m) => (
-                      <span
-                        key={m}
-                        className="rounded-md bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
-                      >
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
           </>
         ) : null}
 

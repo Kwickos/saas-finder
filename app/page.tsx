@@ -751,12 +751,14 @@ function SubredditChipsField({
   onSubmit,
   autoFocus = false,
   size = "md",
+  theme = "light",
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   onSubmit?: () => void;
   autoFocus?: boolean;
   size?: "sm" | "md";
+  theme?: "light" | "dark";
 }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -822,28 +824,41 @@ function SubredditChipsField({
   }
 
   const canAdd = values.length < MAX_SUBS;
+  const isDark = theme === "dark";
   const inputPlaceholder =
     values.length === 0
-      ? "Type a subreddit and press Enter…"
+      ? isDark
+        ? "Add subreddits to analyze…"
+        : "Type a subreddit and press Enter…"
       : canAdd
-        ? "+ add another"
-        : `Max ${MAX_SUBS} subreddits`;
+        ? "+ add"
+        : `Max ${MAX_SUBS}`;
 
   return (
     <div
       className={classNames(
-        "flex flex-1 flex-wrap items-center gap-1.5 rounded-xl border bg-white transition",
-        "border-zinc-200 focus-within:border-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/10",
-        size === "sm" ? "px-2 py-1.5" : "px-3 py-2",
+        "flex min-w-0 flex-1 items-center gap-1.5",
+        isDark
+          ? "scrollbar-thin overflow-x-auto whitespace-nowrap"
+          : classNames(
+              "flex-wrap rounded-xl border bg-white transition",
+              "border-zinc-200 focus-within:border-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/10",
+              size === "sm" ? "px-2 py-1.5" : "px-3 py-2",
+            ),
       )}
       onClick={() => inputRef.current?.focus()}
     >
       {values.map((sub) => (
         <span
           key={sub}
-          className="inline-flex items-center gap-1 rounded-md bg-zinc-100 py-1 pl-2 pr-1 text-sm font-medium text-zinc-800"
+          className={classNames(
+            "inline-flex shrink-0 items-center gap-1 rounded-md py-0.5 pl-2 pr-1 text-[13px] font-medium",
+            isDark
+              ? "bg-white/10 text-white"
+              : "bg-zinc-100 py-1 text-sm text-zinc-800",
+          )}
         >
-          <span className="text-zinc-400">r/</span>
+          <span className={isDark ? "text-white/50" : "text-zinc-400"}>r/</span>
           {sub}
           <button
             type="button"
@@ -851,7 +866,12 @@ function SubredditChipsField({
               e.stopPropagation();
               remove(sub);
             }}
-            className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700"
+            className={classNames(
+              "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded transition",
+              isDark
+                ? "text-white/40 hover:bg-white/10 hover:text-white"
+                : "text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700",
+            )}
             aria-label={`Remove r/${sub}`}
           >
             <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
@@ -877,8 +897,13 @@ function SubredditChipsField({
         spellCheck={false}
         disabled={!canAdd && draft.length === 0}
         className={classNames(
-          "min-w-[140px] flex-1 bg-transparent text-[15px] text-zinc-900 outline-none placeholder:text-zinc-400 disabled:placeholder:text-zinc-300",
-          size === "sm" ? "py-1" : "py-1.5",
+          "min-w-[80px] flex-1 bg-transparent outline-none",
+          isDark
+            ? "text-sm text-white placeholder:text-white/40 disabled:placeholder:text-white/20"
+            : classNames(
+                "text-[15px] text-zinc-900 placeholder:text-zinc-400 disabled:placeholder:text-zinc-300",
+                size === "sm" ? "py-1" : "py-1.5",
+              ),
         )}
       />
     </div>
@@ -932,64 +957,12 @@ function NavSubredditPopover({
     onAnalyze();
   }
 
-  const [visibleCount, setVisibleCount] = useState(values.length);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const slotRef = useRef<HTMLSpanElement>(null);
-  const ghostRef = useRef<HTMLDivElement>(null);
-
-  // Measure how many chips actually fit in the trigger and only render
-  // those — append "+N more" when at least one chip overflows.
-  useLayoutEffect(() => {
-    if (values.length === 0) {
-      setVisibleCount(0);
-      return;
-    }
-
-    function recompute() {
-      const slot = slotRef.current;
-      const ghost = ghostRef.current;
-      if (!slot || !ghost) return;
-
-      const available = slot.clientWidth;
-      const ghostChips = Array.from(
-        ghost.querySelectorAll<HTMLElement>("[data-ghost-chip]"),
-      );
-      const ghostMore = ghost.querySelector<HTMLElement>("[data-ghost-more]");
-      const moreWidth = ghostMore?.offsetWidth ?? 70;
-      const gap = 6;
-
-      let total = 0;
-      let count = 0;
-      for (let i = 0; i < ghostChips.length; i++) {
-        const chipWidth = ghostChips[i].offsetWidth;
-        const isLast = i === ghostChips.length - 1;
-        const reserveMore = isLast ? 0 : moreWidth + gap;
-        const next = total + chipWidth + (i > 0 ? gap : 0);
-        if (next + reserveMore > available) break;
-        total = next;
-        count = i + 1;
-      }
-      setVisibleCount(count);
-    }
-
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    if (triggerRef.current) ro.observe(triggerRef.current);
-    return () => ro.disconnect();
-  }, [values]);
-
-  const visible = values.slice(0, visibleCount);
-  const overflow = Math.max(0, values.length - visibleCount);
-
   return (
     <div className="relative w-full max-w-[520px]" ref={ref}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+      <div
         className={classNames(
-          "flex w-full items-center gap-2 rounded-full bg-zinc-900 py-2 pl-3 pr-3 text-sm text-white transition",
-          "hover:bg-zinc-800",
+          "flex w-full items-center gap-2 rounded-full bg-zinc-900 py-1.5 pl-3 pr-1.5 text-sm text-white transition",
+          "focus-within:ring-2 focus-within:ring-white/15",
           open && "ring-2 ring-white/15",
         )}
       >
@@ -1010,94 +983,53 @@ function NavSubredditPopover({
           />
         </svg>
 
-        <span
-          ref={slotRef}
-          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden"
-        >
-          {values.length === 0 ? (
-            <span className="truncate text-white/50">
-              Add subreddits to analyze…
-            </span>
-          ) : (
-            <>
-              {visible.map((sub) => (
-                <span
-                  key={sub}
-                  className="inline-flex shrink-0 items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[13px] font-medium"
-                >
-                  <span className="text-white/50">r/</span>
-                  {sub}
-                </span>
-              ))}
-              {overflow > 0 ? (
-                <span className="shrink-0 text-xs text-white/60">
-                  +{overflow} more
-                </span>
-              ) : null}
-            </>
+        <SubredditChipsField
+          values={values}
+          onChange={onChange}
+          onSubmit={onAnalyze}
+          theme="dark"
+        />
+
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={classNames(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition",
+            open
+              ? "bg-white/15 text-white"
+              : "text-white/60 hover:bg-white/10 hover:text-white",
           )}
-        </span>
-
-        <span className="shrink-0 text-white/60">
-          <ChevronIcon open={open} />
-        </span>
-      </button>
-
-      {/* Hidden ghost row used purely to measure chip widths. Kept identical
-          in styling to the visible chips so measurements stay accurate. */}
-      <div
-        ref={ghostRef}
-        aria-hidden
-        className="pointer-events-none absolute -z-10 flex items-center gap-1.5 whitespace-nowrap opacity-0"
-        style={{
-          top: 0,
-          left: 0,
-          visibility: "hidden",
-        }}
-      >
-        {values.map((sub) => (
-          <span
-            key={`ghost-${sub}`}
-            data-ghost-chip
-            className="inline-flex items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[13px] font-medium text-white"
-          >
-            <span className="text-white/50">r/</span>
-            {sub}
-          </span>
-        ))}
-        <span data-ghost-more className="text-xs text-white/60">
-          +{values.length} more
-        </span>
+          aria-label="Settings & presets"
+          title="Settings & presets"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path
+              d="M3 5h6m4 0h-1M3 11h1m4 0h5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <circle cx="11" cy="5" r="1.5" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="6" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        </button>
       </div>
 
       {open ? (
         <div className="shadow-popover absolute left-1/2 top-full z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-xl bg-white p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <SectionLabel>Subreddits to analyze</SectionLabel>
+          <div className="mb-3 flex items-center justify-between">
+            <SectionLabel>Settings</SectionLabel>
             <span className="text-xs text-zinc-400 tabular-nums">
-              {values.length}/{MAX_SUBS}
+              {values.length}/{MAX_SUBS} subs
             </span>
           </div>
 
-          <SubredditChipsField
-            values={values}
-            onChange={onChange}
-            onSubmit={handleAnalyze}
-            autoFocus
-            size="sm"
+          <SettingsFields
+            settings={settings}
+            onChange={onSettingsChange}
+            models={models}
+            modelsLoading={modelsLoading}
           />
-
-          <div className="mt-5">
-            <SectionLabel>Settings</SectionLabel>
-            <div className="mt-2">
-              <SettingsFields
-                settings={settings}
-                onChange={onSettingsChange}
-                models={models}
-                modelsLoading={modelsLoading}
-              />
-            </div>
-          </div>
 
           <div className="mt-5 flex items-center justify-between gap-2">
             <PresetMenu onPick={onChange} />
@@ -1111,6 +1043,14 @@ function NavSubredditPopover({
                   Clear
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={loading || values.length === 0}
+                className="rounded-md bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white transition active:scale-[0.96] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+              >
+                Run
+              </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
